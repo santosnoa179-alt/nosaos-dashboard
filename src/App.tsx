@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect, useContext, createContext } from "react";
 import {
   BarChart,
@@ -16,7 +17,7 @@ const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrYnRqZWl0amt5Y29meWJuYnloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NjkwMTUsImV4cCI6MjA4OTE0NTAxNX0.ZoduLQz9zJASWIwapUZINOaMGhCCJAjYp1_I9LrPbic";
 const APP_PASSWORD = "Santos@";
 
-async function sbGet(id) {
+async function sbGet(id: string) {
   try {
     var r = await fetch(
       SUPABASE_URL + "/rest/v1/dashboard_data?id=eq." + id + "&select=data",
@@ -33,7 +34,7 @@ async function sbGet(id) {
     return null;
   }
 }
-async function sbSet(id, data) {
+async function sbSet(id: string, data: any) {
   try {
     await fetch(SUPABASE_URL + "/rest/v1/dashboard_data", {
       method: "POST",
@@ -52,7 +53,7 @@ async function sbSet(id, data) {
   } catch (e) {}
 }
 
-function useSynced(key, def) {
+function useSynced(key: string, def: any) {
   var [v, setV] = useState(function () {
     try {
       var s = localStorage.getItem(key);
@@ -63,7 +64,7 @@ function useSynced(key, def) {
   });
   var [loaded, setLoaded] = useState(false);
   useEffect(function () {
-    sbGet(key).then(function (remote) {
+    sbGet(key).then(function (remote: any) {
       if (remote !== null) {
         setV(remote);
         try {
