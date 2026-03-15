@@ -184,6 +184,146 @@ const DONUT_COLORS = {
   "Priorité basse": "#959B9E",
 };
 
+const CITATIONS = [
+  {
+    texte:
+      "Ce que tu fais chaque jour compte plus que ce que tu fais de temps en temps.",
+    auteur: "Gretchen Rubin",
+  },
+  {
+    texte:
+      "La discipline, c'est choisir entre ce que tu veux maintenant et ce que tu veux le plus.",
+    auteur: "Abraham Lincoln",
+  },
+  { texte: "Le secret du succès est de commencer.", auteur: "Mark Twain" },
+  {
+    texte:
+      "Chaque matin tu as deux choix : continuer à dormir avec tes rêves, ou te lever et les réaliser.",
+    auteur: "Anonyme",
+  },
+  {
+    texte: "La motivation te met en marche, l'habitude te fait avancer.",
+    auteur: "Jim Ryun",
+  },
+  {
+    texte: "Ne compte pas les jours, fais que les jours comptent.",
+    auteur: "Muhammad Ali",
+  },
+  {
+    texte: "Ton futur est créé par ce que tu fais aujourd'hui, pas demain.",
+    auteur: "Robert Kiyosaki",
+  },
+  {
+    texte:
+      "Le succès n'est pas final, l'échec n'est pas fatal. C'est le courage de continuer qui compte.",
+    auteur: "Winston Churchill",
+  },
+  {
+    texte:
+      "Concentre-toi sur le chemin à parcourir, pas sur les obstacles qui t'en séparent.",
+    auteur: "Anonyme",
+  },
+  {
+    texte:
+      "Les grandes choses ne sont jamais faites par une seule personne. Elles sont faites par une équipe.",
+    auteur: "Steve Jobs",
+  },
+  {
+    texte:
+      "Peu importe la vitesse à laquelle tu avances, tu es toujours en avance sur celui qui n'a pas commencé.",
+    auteur: "Confucius",
+  },
+  {
+    texte: "La vie commence là où ta zone de confort se termine.",
+    auteur: "Neale Donald Walsch",
+  },
+  {
+    texte: "Investis en toi-même. Ton carrière est le moteur de ta richesse.",
+    auteur: "Paul Clitheroe",
+  },
+  {
+    texte: "Sois le changement que tu veux voir dans le monde.",
+    auteur: "Gandhi",
+  },
+  {
+    texte:
+      "Si tu veux aller vite, marche seul. Si tu veux aller loin, marche ensemble.",
+    auteur: "Proverbe africain",
+  },
+  {
+    texte: "Le génie, c'est 1% d'inspiration et 99% de transpiration.",
+    auteur: "Thomas Edison",
+  },
+  {
+    texte:
+      "Il faut toujours viser la lune, car même en cas d'échec, on atterrit dans les étoiles.",
+    auteur: "Oscar Wilde",
+  },
+  {
+    texte:
+      "La seule façon de faire du bon travail est d'aimer ce que vous faites.",
+    auteur: "Steve Jobs",
+  },
+  {
+    texte:
+      "L'avenir appartient à ceux qui croient en la beauté de leurs rêves.",
+    auteur: "Eleanor Roosevelt",
+  },
+  {
+    texte:
+      "Ce n'est pas parce que les choses sont difficiles que nous n'osons pas, c'est parce que nous n'osons pas qu'elles sont difficiles.",
+    auteur: "Sénèque",
+  },
+  { texte: "Chaque expert a été un jour un débutant.", auteur: "Helen Hayes" },
+  {
+    texte: "La meilleure façon de prédire l'avenir, c'est de le créer.",
+    auteur: "Peter Drucker",
+  },
+  { texte: "Fais de chaque jour ton chef-d'œuvre.", auteur: "John Wooden" },
+  {
+    texte: "Le succès c'est tomber sept fois et se relever huit.",
+    auteur: "Proverbe japonais",
+  },
+  {
+    texte: "Arrête de rêver à ta vie et commence à vivre tes rêves.",
+    auteur: "Anonyme",
+  },
+  {
+    texte: "Une journée bien planifiée est une journée à moitié réussie.",
+    auteur: "Anonyme",
+  },
+  {
+    texte: "La persévérance est la mère du succès.",
+    auteur: "Honoré de Balzac",
+  },
+  {
+    texte: "On ne gère pas le temps, on gère ses priorités.",
+    auteur: "Anonyme",
+  },
+  {
+    texte: "Ce qui compte vraiment, c'est ce que tu fais avec ce que tu as.",
+    auteur: "Aldous Huxley",
+  },
+  {
+    texte:
+      "Le meilleur moment pour planter un arbre était il y a 20 ans. Le second meilleur moment, c'est maintenant.",
+    auteur: "Proverbe chinois",
+  },
+  {
+    texte:
+      "Il n'y a pas de vent favorable pour celui qui ne sait pas où il va.",
+    auteur: "Sénèque",
+  },
+];
+
+function getCitationDuJour() {
+  var now = new Date();
+  var dayOfYear = Math.floor(
+    (now - new Date(now.getFullYear(), 0, 0)) / 86400000
+  );
+  return CITATIONS[dayOfYear % CITATIONS.length];
+}
+
 const DEF_TACHES = [
   {
     id: "t1",
