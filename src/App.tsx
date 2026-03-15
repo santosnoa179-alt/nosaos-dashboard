@@ -1686,54 +1686,6 @@ export default function App() {
                   </p>
                 </div>
               )}
-              {!isMobile &&
-                (() => {
-                  var citation = getCitationDuJour();
-                  return (
-                    <div
-                      style={{
-                        background: C === DARK ? "#1E2028" : "#F0EBE3",
-                        borderRadius: 14,
-                        padding: "18px 22px",
-                        marginBottom: 20,
-                        borderLeft: "3px solid " + C.beige,
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: C.textSec,
-                          fontWeight: 700,
-                          letterSpacing: "0.08em",
-                          textTransform: "uppercase",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Citation du jour
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 15,
-                          color: C.text,
-                          fontStyle: "italic",
-                          lineHeight: 1.6,
-                          marginBottom: 8,
-                        }}
-                      >
-                        « {citation.texte} »
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: C.beige,
-                          fontWeight: 600,
-                        }}
-                      >
-                        — {citation.auteur}
-                      </div>
-                    </div>
-                  );
-                })()}
               {isMobile && (
                 <h2
                   style={{
