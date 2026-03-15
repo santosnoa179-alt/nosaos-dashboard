@@ -765,27 +765,59 @@ function LoginScreen(p) {
         }}
       >
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ marginBottom: 12 }}>
-            <span
+          <div
+            style={{
+              marginBottom: 12,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+            }}
+          >
+            <div
               style={{
-                fontSize: 36,
-                fontWeight: 900,
-                letterSpacing: "-0.04em",
-                color: C.text,
+                width: 52,
+                height: 52,
+                borderRadius: 14,
+                background: C.beige,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              Noa
-            </span>
-            <span
-              style={{
-                fontSize: 36,
-                fontWeight: 900,
-                letterSpacing: "-0.04em",
-                color: C.beige,
-              }}
-            >
-              OS
-            </span>
+              <span
+                style={{
+                  fontSize: 18,
+                  fontWeight: 900,
+                  color: "#fff",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                N/S
+              </span>
+            </div>
+            <div style={{ textAlign: "left" }}>
+              <span
+                style={{
+                  fontSize: 28,
+                  fontWeight: 900,
+                  letterSpacing: "-0.04em",
+                  color: C.text,
+                }}
+              >
+                Noa
+              </span>
+              <span
+                style={{
+                  fontSize: 28,
+                  fontWeight: 900,
+                  letterSpacing: "-0.04em",
+                  color: C.beige,
+                }}
+              >
+                OS
+              </span>
+            </div>
           </div>
           <p style={{ color: C.textSec, fontSize: 13, marginTop: 0 }}>
             Connecte-toi pour accéder à ton espace
@@ -1308,19 +1340,48 @@ export default function App() {
               transition: "background .4s",
             }}
           >
-            <span
+            <div
               style={{
-                color: C.white,
-                fontWeight: 900,
-                fontSize: 16,
-                letterSpacing: "-0.02em",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
                 padding: "16px 0",
-                whiteSpace: "nowrap",
                 flexShrink: 0,
               }}
             >
-              Noa<span style={{ color: C.beige }}>OS</span>
-            </span>
+              <div
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 8,
+                  background: C.beige,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 900,
+                    color: "#fff",
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  N/S
+                </span>
+              </div>
+              <span
+                style={{
+                  color: C.white,
+                  fontWeight: 900,
+                  fontSize: 16,
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                Noa<span style={{ color: C.beige }}>OS</span>
+              </span>
+            </div>
             <div style={{ display: "flex", flex: 1 }}>
               {TABS.map(function (t) {
                 return (
