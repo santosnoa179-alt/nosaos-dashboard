@@ -1409,6 +1409,24 @@ export default function App() {
             </div>
             <button
               onClick={function () {
+                setManualDark(function (m) {
+                  return m === null ? !darkMode : !m;
+                });
+              }}
+              style={{
+                background: "rgba(255,255,255,.1)",
+                border: "none",
+                borderRadius: 20,
+                padding: "6px 10px",
+                cursor: "pointer",
+                fontSize: 14,
+                color: C.white,
+              }}
+            >
+              {(manualDark !== null ? manualDark : darkMode) ? "☀" : "☾"}
+            </button>
+            <button
+              onClick={function () {
                 setMenuOpen(function (v) {
                   return !v;
                 });
@@ -1456,24 +1474,6 @@ export default function App() {
                     : "none",
                 }}
               />
-            </button>
-            <button
-              onClick={function () {
-                setManualDark(function (m) {
-                  return m === null ? !darkMode : !m;
-                });
-              }}
-              style={{
-                background: "rgba(255,255,255,.1)",
-                border: "none",
-                borderRadius: 20,
-                padding: "6px 10px",
-                cursor: "pointer",
-                fontSize: 14,
-                color: C.white,
-              }}
-            >
-              {(manualDark !== null ? manualDark : darkMode) ? "☀" : "☾"}
             </button>
           </div>
         )}
@@ -1686,6 +1686,54 @@ export default function App() {
                   </p>
                 </div>
               )}
+              {!isMobile &&
+                (() => {
+                  var citation = getCitationDuJour();
+                  return (
+                    <div
+                      style={{
+                        background: C === DARK ? "#1E2028" : "#F0EBE3",
+                        borderRadius: 14,
+                        padding: "18px 22px",
+                        marginBottom: 20,
+                        borderLeft: "3px solid " + C.beige,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: C.textSec,
+                          fontWeight: 700,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          marginBottom: 8,
+                        }}
+                      >
+                        Citation du jour
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 15,
+                          color: C.text,
+                          fontStyle: "italic",
+                          lineHeight: 1.6,
+                          marginBottom: 8,
+                        }}
+                      >
+                        « {citation.texte} »
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: C.beige,
+                          fontWeight: 600,
+                        }}
+                      >
+                        — {citation.auteur}
+                      </div>
+                    </div>
+                  );
+                })()}
               {isMobile && (
                 <h2
                   style={{
@@ -1698,6 +1746,52 @@ export default function App() {
                   Bonjour 👋
                 </h2>
               )}
+
+              {/* Citation du jour */}
+              {(() => {
+                var citation = getCitationDuJour();
+                return (
+                  <div
+                    style={{
+                      background: C === DARK ? "#1E2028" : "#F0EBE3",
+                      borderRadius: 14,
+                      padding: "18px 22px",
+                      marginBottom: 14,
+                      borderLeft: "3px solid " + C.beige,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: C.textSec,
+                        fontWeight: 700,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Citation du jour
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 15,
+                        color: C.text,
+                        fontStyle: "italic",
+                        lineHeight: 1.6,
+                        marginBottom: 8,
+                      }}
+                    >
+                      « {citation.texte} »
+                    </div>
+                    <div
+                      style={{ fontSize: 12, color: C.beige, fontWeight: 600 }}
+                    >
+                      — {citation.auteur}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div style={Object.assign({}, g4, { marginBottom: 14 })}>
                 {[
                   {
