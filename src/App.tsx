@@ -966,22 +966,20 @@ function APBar({ pct, color, h, delay }) {
   );
 }
 function PageTransition({ tabKey, children }) {
-  var [visible, setVisible] = useState(false);
-  var [content, setContent] = useState(children);
-  var [key, setKey] = useState(tabKey);
+  var [visible, setVisible] = useState(true);
+  var prevKey = useRef(tabKey);
   useEffect(
     function () {
-      if (tabKey !== key) {
+      if (tabKey !== prevKey.current) {
+        prevKey.current = tabKey;
         setVisible(false);
         var t = setTimeout(function () {
-          setContent(children);
-          setKey(tabKey);
           setVisible(true);
         }, 150);
         return function () {
           clearTimeout(t);
         };
-      } else setVisible(true);
+      }
     },
     [tabKey]
   );
@@ -993,7 +991,7 @@ function PageTransition({ tabKey, children }) {
         transition: "opacity .25s ease, transform .25s ease",
       }}
     >
-      {content}
+      {children}
     </div>
   );
 }
@@ -3958,6 +3956,8 @@ export default function App() {
     return streak;
   }
 
+  // Toutes ces variables sont recalculées à chaque rendu pour rester réactives
+  var todayDataLive = habitData[todayKey] || {};
   var terminees = taches.filter(function (t) {
     return t.statut === "Termine";
   }).length;
@@ -3983,7 +3983,7 @@ export default function App() {
     }, 0);
   var solde = revReel - depReel;
   var habitWeekDone = habitudes.filter(function (h) {
-    return todayData[h.id];
+    return todayDataLive[h.id];
   }).length;
   var bestStreak = habitudes.reduce(function (best, h) {
     return Math.max(best, getStreak(h.id));
@@ -5375,10 +5375,19 @@ export default function App() {
                         {[
                           {
                             label: "Habitudes aujourd'hui",
-                            val: habitWeekDone + "/" + habitudes.length,
+                            val:
+                              habitudes.filter(function (h) {
+                                return todayDataLive[h.id];
+                              }).length +
+                              "/" +
+                              habitudes.length,
                             pct:
                               habitudes.length > 0
-                                ? (habitWeekDone / habitudes.length) * 100
+                                ? (habitudes.filter(function (h) {
+                                    return todayDataLive[h.id];
+                                  }).length /
+                                    habitudes.length) *
+                                  100
                                 : 0,
                             color: C.green,
                           },
@@ -5529,8 +5538,7 @@ export default function App() {
                           }}
                         >
                           {habitudes.map(function (h) {
-                            var checked =
-                              (habitData[todayKey] || {})[h.id] || false;
+                            var checked = todayDataLive[h.id] || false;
                             var streak = getStreak(h.id);
                             return (
                               <div
