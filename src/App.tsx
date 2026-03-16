@@ -1,12 +1,5 @@
 // @ts-nocheck
-import {
-  useState,
-  useEffect,
-  useContext,
-  createContext,
-  useRef,
-  useCallback,
-} from "react";
+import { useState, useEffect, useContext, createContext, useRef } from "react";
 import {
   BarChart,
   Bar,
@@ -20,209 +13,6 @@ import {
   Pie,
   Cell,
 } from "recharts";
-
-// ── Animated Counter ──
-function useCountUp(target, duration = 1000) {
-  var [count, setCount] = useState(0);
-  var prev = useRef(0);
-  useEffect(
-    function () {
-      var start = prev.current;
-      var startTime = null;
-      function step(ts) {
-        if (!startTime) startTime = ts;
-        var progress = Math.min((ts - startTime) / duration, 1);
-        var ease = 1 - Math.pow(1 - progress, 3);
-        setCount(Math.round(start + (target - start) * ease));
-        if (progress < 1) requestAnimationFrame(step);
-        else prev.current = target;
-      }
-      requestAnimationFrame(step);
-    },
-    [target]
-  );
-  return count;
-}
-
-// ── Confetti ──
-function Confetti({ active, onDone }) {
-  var C = useContext(ThemeCtx);
-  var canvasRef = useRef(null);
-  useEffect(
-    function () {
-      if (!active) return;
-      var canvas = canvasRef.current;
-      if (!canvas) return;
-      var ctx = canvas.getContext("2d");
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
-      var pieces = Array.from({ length: 80 }, function () {
-        return {
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height - canvas.height,
-          w: 8 + Math.random() * 6,
-          h: 6 + Math.random() * 4,
-          color: [C.beige, C.green, C.blue, "#C4A882", "#8AAF91"][
-            Math.floor(Math.random() * 5)
-          ],
-          vx: (Math.random() - 0.5) * 4,
-          vy: 2 + Math.random() * 4,
-          angle: Math.random() * 360,
-          va: (Math.random() - 0.5) * 8,
-          opacity: 1,
-        };
-      });
-      var frame = 0;
-      var anim;
-      function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        pieces.forEach(function (p) {
-          p.x += p.vx;
-          p.y += p.vy;
-          p.angle += p.va;
-          if (frame > 60) p.opacity -= 0.02;
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, p.opacity);
-          ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
-          ctx.rotate((p.angle * Math.PI) / 180);
-          ctx.fillStyle = p.color;
-          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-          ctx.restore();
-        });
-        frame++;
-        if (frame < 120) anim = requestAnimationFrame(draw);
-        else {
-          if (onDone) onDone();
-        }
-      }
-      anim = requestAnimationFrame(draw);
-      return function () {
-        cancelAnimationFrame(anim);
-      };
-    },
-    [active]
-  );
-  if (!active) return null;
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: "fixed",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        pointerEvents: "none",
-        zIndex: 1000,
-      }}
-    />
-  );
-}
-
-// ── Animated PBar ──
-function APBar({ pct, color, h = 6, delay = 0 }) {
-  var C = useContext(ThemeCtx);
-  var [width, setWidth] = useState(0);
-  useEffect(
-    function () {
-      var t = setTimeout(function () {
-        setWidth(Math.min(100, pct || 0));
-      }, delay);
-      return function () {
-        clearTimeout(t);
-      };
-    },
-    [pct, delay]
-  );
-  return (
-    <div
-      style={{
-        background: C.tableBg,
-        borderRadius: 99,
-        height: h,
-        overflow: "hidden",
-        width: "100%",
-      }}
-    >
-      <div
-        style={{
-          width: width + "%",
-          height: h,
-          background: color || C.beige,
-          borderRadius: 99,
-          transition: "width .8s cubic-bezier(0.4,0,0.2,1)",
-        }}
-      />
-    </div>
-  );
-}
-
-// ── Page transition ──
-function PageTransition({ children, tabKey }) {
-  var [visible, setVisible] = useState(false);
-  var [content, setContent] = useState(children);
-  var [key, setKey] = useState(tabKey);
-  useEffect(
-    function () {
-      if (tabKey !== key) {
-        setVisible(false);
-        var t = setTimeout(function () {
-          setContent(children);
-          setKey(tabKey);
-          setVisible(true);
-        }, 150);
-        return function () {
-          clearTimeout(t);
-        };
-      } else {
-        setVisible(true);
-      }
-    },
-    [tabKey, children]
-  );
-  return (
-    <div
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(12px)",
-        transition: "opacity .25s ease, transform .25s ease",
-      }}
-    >
-      {content}
-    </div>
-  );
-}
-
-// ── Hover Card ──
-function HCard({ children, style = {} }) {
-  var C = useContext(ThemeCtx);
-  var [hovered, setHovered] = useState(false);
-  return (
-    <div
-      onMouseEnter={function () {
-        setHovered(true);
-      }}
-      onMouseLeave={function () {
-        setHovered(false);
-      }}
-      style={Object.assign(
-        {
-          background: C.cardBg,
-          borderRadius: 14,
-          padding: "16px 18px",
-          border: "1px solid " + (C === DARK ? "#333" : "#E2DDD7"),
-          transition: "transform .2s ease, box-shadow .2s ease, background .4s",
-          transform: hovered ? "translateY(-2px)" : "translateY(0)",
-          boxShadow: hovered
-            ? "0 8px 24px rgba(0,0,0,.1)"
-            : "0 1px 3px rgba(0,0,0,.04)",
-        },
-        style
-      )}
-    >
-      {children}
-    </div>
-  );
-}
 
 const SUPABASE_URL = "https://vkbtjeitjkycofybnbyh.supabase.co";
 const SUPABASE_KEY =
@@ -293,11 +83,54 @@ function useSynced(key, def) {
   );
   return [v, setV];
 }
-
-function isDark() {
-  var h = new Date().getHours();
-  return h >= 18 || h < 8;
+function useCountUp(target, dur) {
+  var d = dur || 1000;
+  var [count, setCount] = useState(0);
+  var prev = useRef(0);
+  useEffect(
+    function () {
+      var start = prev.current;
+      var t0 = null;
+      function step(ts) {
+        if (!t0) t0 = ts;
+        var p = Math.min((ts - t0) / d, 1);
+        var e = 1 - Math.pow(1 - p, 3);
+        setCount(Math.round(start + (target - start) * e));
+        if (p < 1) requestAnimationFrame(step);
+        else prev.current = target;
+      }
+      requestAnimationFrame(step);
+    },
+    [target]
+  );
+  return count;
 }
+function useScrollAnim() {
+  var ref = useRef(null);
+  var [visible, setVisible] = useState(false);
+  useEffect(function () {
+    var el = ref.current;
+    if (!el) return;
+    var obs = new IntersectionObserver(
+      function (entries) {
+        if (entries[0].isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    obs.observe(el);
+    return function () {
+      obs.disconnect();
+    };
+  }, []);
+  return [ref, visible];
+}
+function isDark() {
+  return new Date().getHours() >= 18 || new Date().getHours() < 8;
+}
+
 const LIGHT = {
   headerBg: "#303237",
   cardBg: "#F4F1ED",
@@ -330,17 +163,17 @@ const ThemeCtx = createContext(LIGHT);
 
 const MOIS = [
   "Jan",
-  "Fév",
+  "Fev",
   "Mar",
   "Avr",
   "Mai",
   "Jui",
   "Juil",
-  "Aoû",
+  "Aou",
   "Sep",
   "Oct",
   "Nov",
-  "Déc",
+  "Dec",
 ];
 const DOMAINE_COLORS = [
   "#798C80",
@@ -352,9 +185,9 @@ const DOMAINE_COLORS = [
   "#8A7B94",
   "#9E8C7A",
 ];
-const PRIORITES = ["Urgent", "Important", "Moyen", "Priorité basse"];
-const STATUTS_TACHE = ["Pas commencé", "En cours", "Terminé"];
-const STATUTS_PROJET = ["Planifié", "En cours", "Terminé"];
+const PRIORITES = ["Urgent", "Important", "Moyen", "Priorite basse"];
+const STATUTS_TACHE = ["Pas commence", "En cours", "Termine"];
+const STATUTS_PROJET = ["Planifie", "En cours", "Termine"];
 const CATEGORIES = [
   "Personnel",
   "Travail",
@@ -362,51 +195,26 @@ const CATEGORIES = [
   "Loisirs",
   "Formation",
 ];
-const ICONS = {
-  dashboard: "⊞",
-  todo: "✓",
-  habitudes: "↺",
-  budget: "€",
-  vision: "◎",
-  projets: "▣",
-  focus: "◉",
-  lecture: "📖",
-  sante: "💪",
-  countdown: "⏳",
-  retro: "📋",
-};
 const PRIORITE_STYLE = {
   Urgent: { bg: "#EDE4DA", border: "#BAA082", color: "#7A5C3A" },
   Important: { bg: "#E2E8E5", border: "#798C80", color: "#3D5C46" },
   Moyen: { bg: "#E0E6EA", border: "#6A7B84", color: "#2E4E59" },
-  "Priorité basse": { bg: "#EDEBE8", border: "#959B9E", color: "#555" },
+  "Priorite basse": { bg: "#EDEBE8", border: "#959B9E", color: "#555" },
 };
 const STATUT_STYLE = {
-  Terminé: { bg: "#E2E8E5", color: "#3D5C46" },
+  Termine: { bg: "#E2E8E5", color: "#3D5C46" },
   "En cours": { bg: "#E0E6EA", color: "#2E4E59" },
-  "Pas commencé": { bg: "#EDEBE8", color: "#787878" },
-  Planifié: { bg: "#EDE4DA", color: "#7A5C3A" },
+  "Pas commence": { bg: "#EDEBE8", color: "#787878" },
+  Planifie: { bg: "#EDE4DA", color: "#7A5C3A" },
 };
 const DONUT_COLORS = {
   Urgent: "#C4A08A",
   Important: "#798C80",
   Moyen: "#6A7B84",
-  "Priorité basse": "#959B9E",
+  "Priorite basse": "#959B9E",
 };
-const MOOD_LABELS = ["😞", "😕", "😐", "🙂", "😄"];
+const MOOD_EMOJIS = [":(", ":/", ":|", ":)", "=)"];
 const MOOD_COLORS = ["#C47070", "#C4A882", "#959B9E", "#798C80", "#6A7B84"];
-const AFFIRMATIONS = [
-  "Je suis capable d'accomplir tout ce que je décide.",
-  "Chaque jour je progresse vers mes objectifs.",
-  "Je suis discipliné, focalisé et déterminé.",
-  "Je crée ma propre chance par mon travail.",
-  "Je mérite le succès que je construis.",
-  "Ma persévérance est plus forte que mes obstacles.",
-  "Je suis en pleine maîtrise de ma vie.",
-  "Je transforme mes défis en opportunités.",
-  "Chaque effort me rapproche de mes rêves.",
-  "Je suis fier du chemin parcouru.",
-];
 const VISION_COLORS = [
   "#BAA082",
   "#798C80",
@@ -415,99 +223,211 @@ const VISION_COLORS = [
   "#A8947E",
   "#7A8C7E",
 ];
+const NOTE_CATEGORIES = [
+  "Idée",
+  "Réflexion",
+  "Important",
+  "Prière",
+  "Objectif",
+  "Autre",
+];
+const NOTE_CAT_COLORS = {
+  Idée: "#BAA082",
+  Réflexion: "#6A7B84",
+  Important: "#C47070",
+  Prière: "#798C80",
+  Objectif: "#8A7B94",
+  Autre: "#959B9E",
+};
+const AFFIRMATIONS = [
+  "Je suis capable d'accomplir tout ce que je decide.",
+  "Chaque jour je progresse vers mes objectifs.",
+  "Je suis discipline, focalise et determine.",
+  "Je cree ma propre chance par mon travail.",
+  "Je merite le succes que je construis.",
+  "Ma perseverance est plus forte que mes obstacles.",
+  "Je suis en pleine maitrise de ma vie.",
+  "Je transforme mes defis en opportunites.",
+  "Chaque effort me rapproche de mes reves.",
+  "Je suis fier du chemin parcouru.",
+];
 const CITATIONS = [
   {
-    texte:
-      "Ce que tu fais chaque jour compte plus que ce que tu fais de temps en temps.",
-    auteur: "Gretchen Rubin",
+    t: "Ce que tu fais chaque jour compte plus que ce que tu fais de temps en temps.",
+    a: "Gretchen Rubin",
   },
   {
-    texte:
-      "La discipline, c'est choisir entre ce que tu veux maintenant et ce que tu veux le plus.",
-    auteur: "Abraham Lincoln",
+    t: "La discipline c'est choisir entre ce que tu veux maintenant et ce que tu veux le plus.",
+    a: "Abraham Lincoln",
   },
-  { texte: "Le secret du succès est de commencer.", auteur: "Mark Twain" },
+  { t: "Le secret du succes est de commencer.", a: "Mark Twain" },
   {
-    texte:
-      "Chaque matin tu as deux choix : continuer à dormir avec tes rêves, ou te lever et les réaliser.",
-    auteur: "Anonyme",
+    t: "La motivation te met en marche, l'habitude te fait avancer.",
+    a: "Jim Ryun",
   },
   {
-    texte: "La motivation te met en marche, l'habitude te fait avancer.",
-    auteur: "Jim Ryun",
+    t: "Ne compte pas les jours, fais que les jours comptent.",
+    a: "Muhammad Ali",
   },
   {
-    texte: "Ne compte pas les jours, fais que les jours comptent.",
-    auteur: "Muhammad Ali",
+    t: "Ton futur est cree par ce que tu fais aujourd'hui, pas demain.",
+    a: "Robert Kiyosaki",
   },
   {
-    texte: "Ton futur est créé par ce que tu fais aujourd'hui, pas demain.",
-    auteur: "Robert Kiyosaki",
+    t: "Le succes n'est pas final, l'echec n'est pas fatal.",
+    a: "Winston Churchill",
+  },
+  { t: "Sois le changement que tu veux voir dans le monde.", a: "Gandhi" },
+  {
+    t: "Le genie c'est 1% d'inspiration et 99% de transpiration.",
+    a: "Thomas Edison",
   },
   {
-    texte: "Le succès n'est pas final, l'échec n'est pas fatal.",
-    auteur: "Winston Churchill",
+    t: "L'avenir appartient a ceux qui croient en la beaute de leurs reves.",
+    a: "Eleanor Roosevelt",
+  },
+  { t: "Fais de chaque jour ton chef-d'oeuvre.", a: "John Wooden" },
+  {
+    t: "Le succes c'est tomber sept fois et se relever huit.",
+    a: "Proverbe japonais",
   },
   {
-    texte: "La vie commence là où ta zone de confort se termine.",
-    auteur: "Neale Donald Walsch",
+    t: "La meilleure facon de predire l'avenir c'est de le creer.",
+    a: "Peter Drucker",
+  },
+  { t: "La perseverance est la mere du succes.", a: "Honore de Balzac" },
+  {
+    t: "Le meilleur moment pour planter un arbre etait il y a 20 ans. Le second c'est maintenant.",
+    a: "Proverbe chinois",
   },
   {
-    texte: "Sois le changement que tu veux voir dans le monde.",
-    auteur: "Gandhi",
+    t: "Il n'y a pas de vent favorable pour celui qui ne sait pas ou il va.",
+    a: "Seneque",
   },
   {
-    texte: "Le génie, c'est 1% d'inspiration et 99% de transpiration.",
-    auteur: "Thomas Edison",
+    t: "La seule facon de faire du bon travail est d'aimer ce que vous faites.",
+    a: "Steve Jobs",
   },
   {
-    texte:
-      "L'avenir appartient à ceux qui croient en la beauté de leurs rêves.",
-    auteur: "Eleanor Roosevelt",
-  },
-  { texte: "Fais de chaque jour ton chef-d'œuvre.", auteur: "John Wooden" },
-  {
-    texte: "Le succès c'est tomber sept fois et se relever huit.",
-    auteur: "Proverbe japonais",
-  },
-  {
-    texte: "La meilleure façon de prédire l'avenir, c'est de le créer.",
-    auteur: "Peter Drucker",
-  },
-  {
-    texte: "La persévérance est la mère du succès.",
-    auteur: "Honoré de Balzac",
-  },
-  {
-    texte:
-      "Le meilleur moment pour planter un arbre était il y a 20 ans. Le second, c'est maintenant.",
-    auteur: "Proverbe chinois",
-  },
-  {
-    texte:
-      "Il n'y a pas de vent favorable pour celui qui ne sait pas où il va.",
-    auteur: "Sénèque",
-  },
-  {
-    texte:
-      "La seule façon de faire du bon travail est d'aimer ce que vous faites.",
-    auteur: "Steve Jobs",
-  },
-  {
-    texte: "Fais de ta vie un rêve, et d'un rêve une réalité.",
-    auteur: "Antoine de Saint-Exupéry",
+    t: "Fais de ta vie un reve, et d'un reve une realite.",
+    a: "Antoine de Saint-Exupery",
   },
 ];
+const VERSETS = [
+  {
+    t: "Car je connais les projets que j'ai formés sur vous, dit l'Éternel, projets de paix et non de malheur, afin de vous donner un avenir et de l'espérance.",
+    r: "Jérémie 29:11",
+  },
+  { t: "Je puis tout par celui qui me fortifie.", r: "Philippiens 4:13" },
+  {
+    t: "L'Éternel est mon berger : je ne manquerai de rien.",
+    r: "Psaume 23:1",
+  },
+  {
+    t: "Cherchez premièrement le royaume et la justice de Dieu ; et toutes ces choses vous seront données par-dessus.",
+    r: "Matthieu 6:33",
+  },
+  {
+    t: "Remets ton sort à l'Éternel, mets en lui ta confiance, et il agira.",
+    r: "Psaume 37:5",
+  },
+  {
+    t: "Ne t'ai-je pas donné cet ordre : Sois fort et courageux ? Ne te laisse pas abattre, car l'Éternel, ton Dieu, est avec toi.",
+    r: "Josué 1:9",
+  },
+  {
+    t: "Mais ceux qui se confient en l'Éternel renouvellent leur force. Ils prennent le vol comme les aigles.",
+    r: "Ésaïe 40:31",
+  },
+  {
+    t: "Que la paix de Dieu, qui surpasse toute intelligence, garde vos cœurs et vos pensées en Jésus-Christ.",
+    r: "Philippiens 4:7",
+  },
+  {
+    t: "Dieu est notre refuge et notre force, un secours qui ne manque jamais dans la détresse.",
+    r: "Psaume 46:2",
+  },
+  {
+    t: "En toutes choses nous sommes plus que vainqueurs par celui qui nous a aimés.",
+    r: "Romains 8:37",
+  },
+  {
+    t: "Confiez-vous en l'Éternel de tout votre cœur, et ne vous appuyez pas sur votre intelligence.",
+    r: "Proverbes 3:5",
+  },
+  {
+    t: "Venez à moi, vous tous qui êtes fatigués et chargés, et je vous donnerai du repos.",
+    r: "Matthieu 11:28",
+  },
+  {
+    t: "Car Dieu n'a pas donné un esprit de timidité, mais un esprit de force, d'amour et de sagesse.",
+    r: "2 Timothée 1:7",
+  },
+  {
+    t: "Demandez, et l'on vous donnera ; cherchez, et vous trouverez ; frappez, et l'on vous ouvrira.",
+    r: "Matthieu 7:7",
+  },
+  {
+    t: "Tout ce que vous faites, faites-le de bon cœur, comme pour le Seigneur et non pour des hommes.",
+    r: "Colossiens 3:23",
+  },
+  {
+    t: "Ne vous inquiétez de rien ; mais en toute chose faites connaître vos besoins à Dieu par des prières.",
+    r: "Philippiens 4:6",
+  },
+  {
+    t: "Et nous savons que toutes choses concourent au bien de ceux qui aiment Dieu.",
+    r: "Romains 8:28",
+  },
+  {
+    t: "Réjouissez-vous toujours dans le Seigneur ; je le répète, réjouissez-vous.",
+    r: "Philippiens 4:4",
+  },
+  {
+    t: "Ta parole est une lampe à mes pieds, et une lumière sur mon sentier.",
+    r: "Psaume 119:105",
+  },
+  {
+    t: "Celui qui demeure sous l'abri du Très-Haut repose à l'ombre du Tout-Puissant.",
+    r: "Psaume 91:1",
+  },
+  {
+    t: "Mets ta joie dans l'Éternel, et il te donnera ce que ton cœur désire.",
+    r: "Psaume 37:4",
+  },
+  {
+    t: "L'amour est patient, il est plein de bonté ; il ne jalouse pas.",
+    r: "1 Corinthiens 13:4",
+  },
+  {
+    t: "L'Éternel est près de ceux qui ont le cœur brisé, et il sauve ceux qui ont l'esprit dans l'abattement.",
+    r: "Psaume 34:19",
+  },
+  {
+    t: "Car c'est par la grâce que vous êtes sauvés, par le moyen de la foi.",
+    r: "Éphésiens 2:8",
+  },
+  {
+    t: "Voici, je me tiens à la porte, et je frappe. Si quelqu'un entend ma voix et ouvre la porte, j'entrerai chez lui.",
+    r: "Apocalypse 3:20",
+  },
+];
+
 function getCitationDuJour() {
-  var now = new Date();
-  var d = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+  var n = new Date();
+  var d = Math.floor((n - new Date(n.getFullYear(), 0, 0)) / 86400000);
   return CITATIONS[d % CITATIONS.length];
+}
+function getVersetDuJour(offset) {
+  var n = new Date();
+  var d = Math.floor((n - new Date(n.getFullYear(), 0, 0)) / 86400000);
+  return VERSETS[(d + (offset || 0)) % VERSETS.length];
 }
 
 const DEF_TACHES = [
   {
     id: "t1",
-    nom: "Préparer le rapport mensuel",
+    nom: "Preparer le rapport mensuel",
     priorite: "Urgent",
     categorie: "Travail",
     statut: "En cours",
@@ -515,18 +435,18 @@ const DEF_TACHES = [
   },
   {
     id: "t2",
-    nom: "Appeler le médecin",
+    nom: "Appeler le medecin",
     priorite: "Important",
     categorie: "Personnel",
-    statut: "Pas commencé",
+    statut: "Pas commence",
     echeance: "2026-03-20",
   },
   {
     id: "t3",
     nom: "Lire 1 chapitre d'un livre",
-    priorite: "Priorité basse",
+    priorite: "Priorite basse",
     categorie: "Loisirs",
-    statut: "Pas commencé",
+    statut: "Pas commence",
     echeance: "2026-03-30",
   },
   {
@@ -534,25 +454,25 @@ const DEF_TACHES = [
     nom: "Envoyer ma newsletter",
     priorite: "Important",
     categorie: "Travail",
-    statut: "Terminé",
+    statut: "Termine",
     echeance: "2026-03-18",
   },
 ];
 const DEF_HABITUDES = [
-  { id: "h1", nom: "Boire un verre d'eau au réveil", obj: 31 },
-  { id: "h2", nom: "Planifier les tâches de la journée", obj: 31 },
-  { id: "h3", nom: "Faire 30 min de méditation", obj: 20 },
-  { id: "h4", nom: "Préparer un petit-déjeuner équilibré", obj: 25 },
+  { id: "h1", nom: "Boire un verre d'eau au reveil", obj: 31 },
+  { id: "h2", nom: "Planifier les taches de la journee", obj: 31 },
+  { id: "h3", nom: "Faire 30 min de meditation", obj: 20 },
+  { id: "h4", nom: "Preparer un petit-dejeuner equilibre", obj: 25 },
   { id: "h5", nom: "Lire 10 pages d'un livre", obj: 20 },
-  { id: "h6", nom: "Écrire 3 choses positives", obj: 31 },
+  { id: "h6", nom: "Ecrire 3 choses positives", obj: 31 },
   { id: "h7", nom: "Faire du sport", obj: 15 },
-  { id: "h8", nom: "Limiter les écrans 1h avant de dormir", obj: 20 },
+  { id: "h8", nom: "Limiter les ecrans 1h avant de dormir", obj: 20 },
 ];
 const DEF_PROJETS = [
   {
     id: "p1",
     nom: "Site web personnel",
-    desc: "Création du portfolio",
+    desc: "Creation du portfolio",
     debut: "2026-01-01",
     fin: "2026-06-30",
     statut: "En cours",
@@ -569,16 +489,16 @@ const DEF_PROJETS = [
   },
   {
     id: "p3",
-    nom: "Rénovation bureau",
-    desc: "Aménagement espace travail",
+    nom: "Renovation bureau",
+    desc: "Amenagement espace travail",
     debut: "2026-03-01",
     fin: "2026-04-30",
-    statut: "Planifié",
+    statut: "Planifie",
     prog: 0,
   },
 ];
 const DEF_DOMAINES = [
-  { id: "d1", nom: "Santé", color: "#798C80" },
+  { id: "d1", nom: "Sante", color: "#798C80" },
   { id: "d2", nom: "Lecture", color: "#6A7B84" },
   { id: "d3", nom: "Formation", color: "#BAA082" },
   { id: "d4", nom: "Finances", color: "#7A8C7E" },
@@ -588,7 +508,7 @@ const DEF_OBJECTIFS = [
     id: "o1",
     domaineId: "d1",
     obj: "Faire du sport 4x/semaine",
-    action: "Réserver créneaux cette semaine",
+    action: "Reserver creneaux cette semaine",
     score: 0,
     terme: "court",
   },
@@ -604,14 +524,14 @@ const DEF_OBJECTIFS = [
     id: "o3",
     domaineId: "d3",
     obj: "Terminer 2 formations en ligne",
-    action: "Choisir formation 1 cette semaine",
+    action: "Choisir formation 1",
     score: 0,
     terme: "long",
   },
   {
     id: "o4",
     domaineId: "d4",
-    obj: "Épargner X% de mes revenus",
+    obj: "Epargner X% de mes revenus",
     action: "Mettre en place virement automatique",
     score: 0,
     terme: "long",
@@ -631,15 +551,483 @@ const DEF_BUDGET = {
     { id: "bv2", cat: "Restaurants", prevu: 0, reel: 0 },
   ],
 };
+const DEF_ROUTINES = {
+  matin: {
+    nom: "Routine Matin",
+    etapes: [
+      { id: "rm1", nom: "Boire un grand verre d'eau", duree: 2 },
+      { id: "rm2", nom: "Meditation / respiration", duree: 10 },
+      { id: "rm3", nom: "Journaling / gratitude", duree: 5 },
+      { id: "rm4", nom: "Exercice physique", duree: 20 },
+      { id: "rm5", nom: "Douche froide", duree: 5 },
+      { id: "rm6", nom: "Planifier la journee", duree: 10 },
+    ],
+  },
+  soir: {
+    nom: "Routine Soir",
+    etapes: [
+      { id: "rs1", nom: "Revue de la journee", duree: 5 },
+      { id: "rs2", nom: "Lecture", duree: 20 },
+      { id: "rs3", nom: "Pas d'ecrans", duree: 30 },
+      { id: "rs4", nom: "Preparer le lendemain", duree: 5 },
+      { id: "rs5", nom: "Etirements / relaxation", duree: 10 },
+    ],
+  },
+};
 
 var uid = function () {
   return "id_" + Date.now() + "_" + Math.floor(Math.random() * 9999);
 };
 var fmt = function (v) {
-  return (+v || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2 }) + " €";
+  return (
+    (+v || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2 }) + " EUR"
+  );
 };
 
-function Card(p) {
+// ── Wellbeing ─────────────────────────────────────────────
+function calcWellbeing(
+  todayKey,
+  habitData,
+  habitudes,
+  moodData,
+  sommeilData,
+  sportData
+) {
+  var td = habitData[todayKey] || {};
+  var hs =
+    habitudes.length > 0
+      ? (habitudes.filter(function (h) {
+          return td[h.id];
+        }).length /
+          habitudes.length) *
+        30
+      : 0;
+  var m = moodData[todayKey] || 0;
+  var ms = m ? (m / 5) * 25 : 0;
+  var s = parseFloat(sommeilData[todayKey]) || 0;
+  var ss = s >= 8 ? 25 : s >= 6 ? 18 : s >= 4 ? 10 : s > 0 ? 5 : 0;
+  var ws = new Date(todayKey);
+  var dw = ws.getDay();
+  ws.setDate(ws.getDate() + (dw === 0 ? -6 : 1 - dw));
+  var sp = sportData.filter(function (x) {
+    return x.date && new Date(x.date) >= ws;
+  }).length;
+  var sps = sp >= 4 ? 20 : sp >= 3 ? 16 : sp >= 2 ? 12 : sp >= 1 ? 6 : 0;
+  return Math.round(hs + ms + ss + sps);
+}
+function wbColor(s) {
+  return s >= 80
+    ? "#798C80"
+    : s >= 60
+    ? "#BAA082"
+    : s >= 40
+    ? "#C4A882"
+    : "#C47070";
+}
+function wbLabel(s) {
+  return s >= 80 ? "Excellent" : s >= 60 ? "Bon" : s >= 40 ? "Moyen" : "Faible";
+}
+
+// ── SVG Icons (always inside components) ─────────────────
+function IconSun({ size, color }) {
+  var s = size || 14;
+  return (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color || "currentColor"}
+      strokeWidth="2"
+    >
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    </svg>
+  );
+}
+function IconMoon({ size, color }) {
+  var s = size || 14;
+  return (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color || "currentColor"}
+      strokeWidth="2"
+    >
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+function IconCross({ size, color }) {
+  var s = size || 18;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <rect
+        x="10"
+        y="2"
+        width="4"
+        height="20"
+        rx="2"
+        fill={color || "currentColor"}
+      />
+      <rect
+        x="2"
+        y="8"
+        width="20"
+        height="4"
+        rx="2"
+        fill={color || "currentColor"}
+      />
+    </svg>
+  );
+}
+function IconPin({ size, color, filled }) {
+  var s = size || 13;
+  return (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 24 24"
+      fill={filled ? color || "currentColor" : "none"}
+      stroke={color || "currentColor"}
+      strokeWidth="2"
+    >
+      <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" />
+    </svg>
+  );
+}
+function IconTrash({ size, color }) {
+  var s = size || 13;
+  return (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color || "currentColor"}
+      strokeWidth="2"
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4h6v2" />
+    </svg>
+  );
+}
+function IconSearch({ size, color }) {
+  var s = size || 14;
+  return (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color || "currentColor"}
+      strokeWidth="2"
+    >
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+function IconNote({ size, color }) {
+  var s = size || 40;
+  return (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color || "currentColor"}
+      strokeWidth="1.5"
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+    </svg>
+  );
+}
+function NoteCatIcon({ cat, size }) {
+  var s = size || 12;
+  if (cat === "Idée")
+    return (
+      <svg
+        width={s}
+        height={s}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+      >
+        <path d="M12 2a7 7 0 0 1 4 12.9V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.1A7 7 0 0 1 12 2z" />
+        <path d="M9 21h6" />
+      </svg>
+    );
+  if (cat === "Réflexion")
+    return (
+      <svg
+        width={s}
+        height={s}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+      >
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    );
+  if (cat === "Important")
+    return (
+      <svg
+        width={s}
+        height={s}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+      >
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </svg>
+    );
+  if (cat === "Prière")
+    return (
+      <svg
+        width={s}
+        height={s}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+      >
+        <rect x="10" y="2" width="4" height="18" rx="2" />
+        <rect x="2" y="8" width="20" height="4" rx="2" />
+      </svg>
+    );
+  if (cat === "Objectif")
+    return (
+      <svg
+        width={s}
+        height={s}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="12" cy="12" r="6" />
+        <circle cx="12" cy="12" r="2" />
+      </svg>
+    );
+  return (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+    >
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+      <circle cx="5" cy="12" r="1" />
+    </svg>
+  );
+}
+
+// ── UI Primitives ─────────────────────────────────────────
+function Anim({ children, delay, style }) {
+  var [ref, visible] = useScrollAnim();
+  var d = (delay || 0) * 0.1;
+  return (
+    <div
+      ref={ref}
+      style={Object.assign(
+        {
+          opacity: visible ? 1 : 0,
+          transform: visible ? "translateY(0)" : "translateY(20px)",
+          transition:
+            "opacity .5s ease " + d + "s, transform .5s ease " + d + "s",
+        },
+        style || {}
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+function Confetti({ active, onDone }) {
+  var C = useContext(ThemeCtx);
+  var canvasRef = useRef(null);
+  useEffect(
+    function () {
+      if (!active) return;
+      var canvas = canvasRef.current;
+      if (!canvas) return;
+      var ctx = canvas.getContext("2d");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      var colors = [C.beige, C.green, C.blue, "#C4A882", "#8AAF91"];
+      var pieces = Array.from({ length: 80 }, function () {
+        return {
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height - canvas.height,
+          w: 8 + Math.random() * 6,
+          h: 6 + Math.random() * 4,
+          color: colors[Math.floor(Math.random() * 5)],
+          vx: (Math.random() - 0.5) * 4,
+          vy: 2 + Math.random() * 4,
+          angle: Math.random() * 360,
+          va: (Math.random() - 0.5) * 8,
+          opacity: 1,
+        };
+      });
+      var frame = 0;
+      var anim;
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pieces.forEach(function (p) {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.angle += p.va;
+          if (frame > 60) p.opacity -= 0.02;
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, p.opacity);
+          ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+          ctx.rotate((p.angle * Math.PI) / 180);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          ctx.restore();
+        });
+        frame++;
+        if (frame < 120) anim = requestAnimationFrame(draw);
+        else if (onDone) onDone();
+      }
+      anim = requestAnimationFrame(draw);
+      return function () {
+        cancelAnimationFrame(anim);
+      };
+    },
+    [active]
+  );
+  if (!active) return null;
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "fixed",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        zIndex: 1000,
+      }}
+    />
+  );
+}
+function APBar({ pct, color, h, delay }) {
+  var C = useContext(ThemeCtx);
+  var [w, setW] = useState(0);
+  useEffect(
+    function () {
+      var t = setTimeout(function () {
+        setW(Math.min(100, pct || 0));
+      }, delay || 0);
+      return function () {
+        clearTimeout(t);
+      };
+    },
+    [pct]
+  );
+  return (
+    <div
+      style={{
+        background: C.tableBg,
+        borderRadius: 99,
+        height: h || 6,
+        overflow: "hidden",
+        width: "100%",
+      }}
+    >
+      <div
+        style={{
+          width: w + "%",
+          height: h || 6,
+          background: color || C.beige,
+          borderRadius: 99,
+          transition: "width .8s cubic-bezier(0.4,0,0.2,1)",
+        }}
+      />
+    </div>
+  );
+}
+function PageTransition({ tabKey, children }) {
+  var [visible, setVisible] = useState(false);
+  var [content, setContent] = useState(children);
+  var [key, setKey] = useState(tabKey);
+  useEffect(
+    function () {
+      if (tabKey !== key) {
+        setVisible(false);
+        var t = setTimeout(function () {
+          setContent(children);
+          setKey(tabKey);
+          setVisible(true);
+        }, 150);
+        return function () {
+          clearTimeout(t);
+        };
+      } else setVisible(true);
+    },
+    [tabKey]
+  );
+  return (
+    <div
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(12px)",
+        transition: "opacity .25s ease, transform .25s ease",
+      }}
+    >
+      {content}
+    </div>
+  );
+}
+function HCard({ children, style }) {
+  var C = useContext(ThemeCtx);
+  var [hov, setHov] = useState(false);
+  return (
+    <div
+      onMouseEnter={function () {
+        setHov(true);
+      }}
+      onMouseLeave={function () {
+        setHov(false);
+      }}
+      style={Object.assign(
+        {
+          background: C.cardBg,
+          borderRadius: 14,
+          padding: "16px 18px",
+          border: "1px solid " + (C === DARK ? "#333" : "#E2DDD7"),
+          transition: "transform .2s, box-shadow .2s",
+          transform: hov ? "translateY(-2px)" : "translateY(0)",
+          boxShadow: hov
+            ? "0 8px 24px rgba(0,0,0,.1)"
+            : "0 1px 3px rgba(0,0,0,.04)",
+        },
+        style || {}
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+function Card({ children, style }) {
   var C = useContext(ThemeCtx);
   return (
     <div
@@ -651,14 +1039,14 @@ function Card(p) {
           border: "1px solid " + (C === DARK ? "#333" : "#E2DDD7"),
           transition: "background .4s",
         },
-        p.style || {}
+        style || {}
       )}
     >
-      {p.children}
+      {children}
     </div>
   );
 }
-function SecTitle(p) {
+function SecTitle({ children }) {
   var C = useContext(ThemeCtx);
   return (
     <div
@@ -671,42 +1059,18 @@ function SecTitle(p) {
         marginBottom: 12,
       }}
     >
-      {p.children}
+      {children}
     </div>
   );
 }
-function PBar(p) {
-  var C = useContext(ThemeCtx);
-  return (
-    <div
-      style={{
-        background: C.tableBg,
-        borderRadius: 99,
-        height: p.h || 6,
-        overflow: "hidden",
-        width: "100%",
-      }}
-    >
-      <div
-        style={{
-          width: Math.min(100, p.pct || 0) + "%",
-          height: p.h || 6,
-          background: p.color || C.beige,
-          borderRadius: 99,
-          transition: "width .4s",
-        }}
-      />
-    </div>
-  );
-}
-function Tag(p) {
-  var s = p.s;
+function Tag({ label, s }) {
+  var st = s || { bg: "#eee", color: "#555" };
   return (
     <span
       style={{
-        background: s.bg,
-        border: "1px solid " + (s.border || "transparent"),
-        color: s.color,
+        background: st.bg,
+        border: "1px solid " + (st.border || "transparent"),
+        color: st.color,
         fontSize: 11,
         padding: "2px 8px",
         borderRadius: 99,
@@ -714,18 +1078,18 @@ function Tag(p) {
         whiteSpace: "nowrap",
       }}
     >
-      {p.label}
+      {label}
     </span>
   );
 }
-function Btn(p) {
+function Btn({ children, onClick, bg, style }) {
   var C = useContext(ThemeCtx);
   return (
     <button
-      onClick={p.onClick}
+      onClick={onClick}
       style={Object.assign(
         {
-          background: p.bg || C.beige,
+          background: bg || C.beige,
           color: "#fff",
           border: "none",
           borderRadius: 8,
@@ -734,18 +1098,18 @@ function Btn(p) {
           fontWeight: 600,
           cursor: "pointer",
         },
-        p.style || {}
+        style || {}
       )}
     >
-      {p.children}
+      {children}
     </button>
   );
 }
-function Del(p) {
+function Del({ onClick }) {
   var C = useContext(ThemeCtx);
   return (
     <button
-      onClick={p.onClick}
+      onClick={onClick}
       style={{
         background: "none",
         border: "none",
@@ -756,15 +1120,15 @@ function Del(p) {
         padding: "4px 6px",
       }}
     >
-      ×
+      x
     </button>
   );
 }
-function Edit(p) {
+function Edit({ onClick }) {
   var C = useContext(ThemeCtx);
   return (
     <button
-      onClick={p.onClick}
+      onClick={onClick}
       style={{
         background: "none",
         border: "none",
@@ -774,11 +1138,11 @@ function Edit(p) {
         padding: "4px 6px",
       }}
     >
-      ✎
+      edit
     </button>
   );
 }
-function MI(p) {
+function MI(props) {
   var C = useContext(ThemeCtx);
   return (
     <input
@@ -793,15 +1157,12 @@ function MI(p) {
         flex: 1,
         width: "100%",
       }}
-      {...p}
+      {...props}
     />
   );
 }
-function MS(p) {
+function MS({ children, ...rest }) {
   var C = useContext(ThemeCtx);
-  var ch = p.children;
-  var rest = Object.assign({}, p);
-  delete rest.children;
   return (
     <select
       style={{
@@ -817,20 +1178,20 @@ function MS(p) {
       }}
       {...rest}
     >
-      {ch}
+      {children}
     </select>
   );
 }
-function Row(p) {
+function Row({ children }) {
   return (
     <div
       style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}
     >
-      {p.children}
+      {children}
     </div>
   );
 }
-function Modal(p) {
+function Modal({ title, onClose, children }) {
   var C = useContext(ThemeCtx);
   return (
     <div
@@ -873,10 +1234,10 @@ function Modal(p) {
           }}
         >
           <span style={{ fontSize: 16, fontWeight: 700, color: C.text }}>
-            {p.title}
+            {title}
           </span>
           <button
-            onClick={p.onClose}
+            onClick={onClose}
             style={{
               background: "none",
               border: "none",
@@ -886,36 +1247,2020 @@ function Modal(p) {
               lineHeight: 1,
             }}
           >
-            ×
+            x
           </button>
         </div>
-        {p.children}
+        {children}
       </div>
     </div>
   );
 }
-function ModalFooter(p) {
+function MF({ onClose, onSave }) {
   var C = useContext(ThemeCtx);
   return (
     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-      <Btn onClick={p.onClose} bg={C.gray} style={{ flex: 1 }}>
+      <Btn onClick={onClose} bg={C.gray} style={{ flex: 1 }}>
         Annuler
       </Btn>
-      <Btn onClick={p.onSave} style={{ flex: 1 }}>
+      <Btn onClick={onSave} style={{ flex: 1 }}>
         Enregistrer
       </Btn>
     </div>
   );
 }
 
-function LoginScreen(p) {
-  var C = p.C;
+// ── COACH IA ──────────────────────────────────────────────
+function CoachIA({
+  taches,
+  habitudes,
+  habitData,
+  moodData,
+  sommeilData,
+  objectifs,
+  budget,
+  sportData,
+}) {
+  var C = useContext(ThemeCtx);
+  var [open, setOpen] = useState(false);
+  var [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content:
+        "Bonjour Noa ! Je suis ton Coach IA. Je connais toutes tes données NoaOS — habitudes, tâches, objectifs, budget, sommeil. Que veux-tu analyser aujourd'hui ?",
+    },
+  ]);
+  var [input, setInput] = useState("");
+  var [loading, setLoading] = useState(false);
+  var endRef = useRef(null);
+  useEffect(
+    function () {
+      if (endRef.current) endRef.current.scrollIntoView({ behavior: "smooth" });
+    },
+    [messages]
+  );
+  var today = new Date();
+  var todayKey = today.toISOString().split("T")[0];
+  var mois = MOIS[today.getMonth()];
+  var moisData = habitData[mois] || {};
+  var todayData = habitData[todayKey] || {};
+  function buildCtx() {
+    var terminees = taches.filter(function (t) {
+      return t.statut === "Termine";
+    }).length;
+    var urgentes = taches.filter(function (t) {
+      return t.priorite === "Urgent" && t.statut !== "Termine";
+    }).length;
+    var enRetard = taches.filter(function (t) {
+      return (
+        t.statut !== "Termine" && t.echeance && new Date(t.echeance) < today
+      );
+    }).length;
+    var totalObj = habitudes.reduce(function (s, h) {
+      return s + h.obj;
+    }, 0);
+    var totalReal = habitudes.reduce(function (s, h) {
+      return s + (moisData[h.id] || 0);
+    }, 0);
+    var tauxHabit = totalObj > 0 ? Math.round((totalReal / totalObj) * 100) : 0;
+    var habitAujourd = habitudes.filter(function (h) {
+      return todayData[h.id];
+    }).length;
+    var revReel = budget.revenus.reduce(function (s, r) {
+      return s + (+r.reel || 0);
+    }, 0);
+    var depReel =
+      budget.fixes.reduce(function (s, r) {
+        return s + (+r.reel || 0);
+      }, 0) +
+      budget.variables.reduce(function (s, r) {
+        return s + (+r.reel || 0);
+      }, 0);
+    function getStreak(hid) {
+      var streak = 0;
+      var d = new Date(today);
+      while (true) {
+        var k = d.toISOString().split("T")[0];
+        var dd = habitData[k];
+        if (dd && dd[hid]) {
+          streak++;
+          d.setDate(d.getDate() - 1);
+        } else break;
+      }
+      return streak;
+    }
+    var streaks = habitudes.map(function (h) {
+      return {
+        nom: h.nom,
+        streak: getStreak(h.id),
+        taux: Math.round(((moisData[h.id] || 0) / h.obj) * 100),
+      };
+    });
+    var moodRecent = Object.keys(moodData)
+      .sort()
+      .slice(-7)
+      .map(function (k) {
+        return moodData[k];
+      });
+    var moodMoy =
+      moodRecent.length > 0
+        ? Math.round(
+            (moodRecent.reduce(function (s, v) {
+              return s + v;
+            }, 0) /
+              moodRecent.length) *
+              10
+          ) / 10
+        : null;
+    var sommeilRecent = Object.keys(sommeilData)
+      .sort()
+      .slice(-7)
+      .map(function (k) {
+        return parseFloat(sommeilData[k]) || 0;
+      })
+      .filter(function (v) {
+        return v > 0;
+      });
+    var sommeilMoy =
+      sommeilRecent.length > 0
+        ? Math.round(
+            (sommeilRecent.reduce(function (s, v) {
+              return s + v;
+            }, 0) /
+              sommeilRecent.length) *
+              10
+          ) / 10
+        : null;
+    var scoreObj =
+      objectifs.length > 0
+        ? Math.round(
+            objectifs.reduce(function (s, o) {
+              return s + (o.score || 0);
+            }, 0) / objectifs.length
+          )
+        : 0;
+    var wb = calcWellbeing(
+      todayKey,
+      habitData,
+      habitudes,
+      moodData,
+      sommeilData,
+      sportData
+    );
+    return (
+      "Tu es le Coach IA personnel de Noa dans l'app NoaOS. Appelle-le toujours par son prénom : Noa. Réponds toujours en français, de façon bienveillante, précise et actionnable.\n\n" +
+      "DATE : " +
+      todayKey +
+      "\nTÂCHES : " +
+      terminees +
+      "/" +
+      taches.length +
+      " terminées, " +
+      urgentes +
+      " urgentes, " +
+      enRetard +
+      " en retard\n\n" +
+      "HABITUDES (" +
+      mois +
+      ") :\n" +
+      streaks
+        .map(function (s) {
+          return "- " + s.nom + " : " + s.taux + "%, streak " + s.streak + "j";
+        })
+        .join("\n") +
+      "\nAujourd'hui : " +
+      habitAujourd +
+      "/" +
+      habitudes.length +
+      ", Taux : " +
+      tauxHabit +
+      "%\n\n" +
+      "SCORE BIEN-ÊTRE : " +
+      wb +
+      "/100\nHUMEUR : " +
+      (moodMoy !== null ? moodMoy + "/5" : "pas de données") +
+      "\nSOMMEIL : " +
+      (sommeilMoy !== null ? sommeilMoy + "h" : "pas de données") +
+      "\n\n" +
+      "BUDGET : Revenus " +
+      revReel +
+      " EUR, Dépenses " +
+      depReel +
+      " EUR, Solde " +
+      (revReel - depReel) +
+      " EUR\n\n" +
+      "OBJECTIFS : " +
+      scoreObj +
+      "%\n" +
+      objectifs
+        .map(function (o) {
+          return "- " + o.obj + " : " + o.score + "%";
+        })
+        .join("\n") +
+      "\n\n" +
+      "SPORT : " +
+      sportData.length +
+      " séances total, " +
+      sportData.filter(function (s) {
+        return s.date && s.date.startsWith(today.toISOString().substring(0, 7));
+      }).length +
+      " ce mois"
+    );
+  }
+  async function sendMessage(userMsg) {
+    if (!userMsg.trim() || loading) return;
+    var nm = [...messages, { role: "user", content: userMsg }];
+    setMessages(nm);
+    setInput("");
+    setLoading(true);
+    try {
+      var res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: buildCtx(),
+          messages: nm.map(function (m) {
+            return { role: m.role, content: m.content };
+          }),
+        }),
+      });
+      var data = await res.json();
+      var reply =
+        data.content && data.content[0]
+          ? data.content[0].text
+          : "Désolé, je n'ai pas pu répondre.";
+      setMessages(function (p) {
+        return [...p, { role: "assistant", content: reply }];
+      });
+    } catch (e) {
+      setMessages(function (p) {
+        return [...p, { role: "assistant", content: "Erreur de connexion." }];
+      });
+    }
+    setLoading(false);
+  }
+  var QUICK = [
+    { label: "Habitudes", msg: "Analyse mes habitudes ce mois." },
+    { label: "Motivation", msg: "Motive-moi avec un message personnalisé." },
+    { label: "Plan d'action", msg: "Quelles tâches prioriser maintenant ?" },
+    {
+      label: "Bien-être",
+      msg: "Analyse mon score bien-être et conseille-moi.",
+    },
+  ];
+  return (
+    <>
+      <button
+        onClick={function () {
+          setOpen(function (v) {
+            return !v;
+          });
+        }}
+        style={{
+          position: "fixed",
+          bottom: 24,
+          right: 24,
+          zIndex: 300,
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          background: open ? "#959B9E" : C.beige,
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 4px 20px rgba(0,0,0,.25)",
+          transition: "all .3s",
+          transform: open ? "rotate(45deg)" : "rotate(0deg)",
+        }}
+      >
+        {open ? (
+          <span
+            style={{
+              color: "#fff",
+              fontSize: 24,
+              lineHeight: 1,
+              transform: "rotate(-45deg)",
+            }}
+          >
+            x
+          </span>
+        ) : (
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="white"
+            strokeWidth="2"
+          >
+            <path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
+        )}
+      </button>
+      {open && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 92,
+            right: 24,
+            zIndex: 299,
+            width: 360,
+            maxHeight: "70vh",
+            background: C.cardBg,
+            borderRadius: 18,
+            border: "1px solid " + (C === DARK ? "#444" : "#E2DDD7"),
+            boxShadow: "0 8px 40px rgba(0,0,0,.2)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              background: C.beige,
+              padding: "14px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,.25)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2.5"
+              >
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+              </svg>
+            </div>
+            <div>
+              <div style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>
+                Coach IA
+              </div>
+              <div style={{ color: "rgba(255,255,255,.8)", fontSize: 11 }}>
+                Analyse tes données NoaOS
+              </div>
+            </div>
+          </div>
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: "14px 16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            {messages.map(function (m, i) {
+              var isUser = m.role === "user";
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    justifyContent: isUser ? "flex-end" : "flex-start",
+                  }}
+                >
+                  <div
+                    style={{
+                      maxWidth: "85%",
+                      padding: "10px 13px",
+                      borderRadius: isUser
+                        ? "14px 14px 4px 14px"
+                        : "14px 14px 14px 4px",
+                      background: isUser ? C.beige : C.tableBg,
+                      color: isUser ? "#fff" : C.text,
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {m.content}
+                  </div>
+                </div>
+              );
+            })}
+            {loading && (
+              <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                <div
+                  style={{
+                    background: C.tableBg,
+                    borderRadius: "14px 14px 14px 4px",
+                    padding: "10px 16px",
+                    display: "flex",
+                    gap: 4,
+                  }}
+                >
+                  {[0, 1, 2].map(function (i) {
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          background: C.beige,
+                          animation:
+                            "pulse 1.2s ease-in-out " + i * 0.2 + "s infinite",
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <div ref={endRef} />
+          </div>
+          {messages.length <= 1 && (
+            <div
+              style={{
+                padding: "0 12px 10px",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 6,
+                flexShrink: 0,
+              }}
+            >
+              {QUICK.map(function (q, i) {
+                return (
+                  <button
+                    key={i}
+                    onClick={function () {
+                      sendMessage(q.msg);
+                    }}
+                    style={{
+                      background: C.tableBg,
+                      border: "1px solid " + (C === DARK ? "#444" : "#E2DDD7"),
+                      borderRadius: 20,
+                      padding: "5px 11px",
+                      fontSize: 11,
+                      color: C.text,
+                      cursor: "pointer",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {q.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div
+            style={{
+              padding: "10px 12px",
+              borderTop: "1px solid " + (C === DARK ? "#333" : "#E2DDD7"),
+              display: "flex",
+              gap: 8,
+              flexShrink: 0,
+            }}
+          >
+            <input
+              value={input}
+              onChange={function (e) {
+                setInput(e.target.value);
+              }}
+              onKeyDown={function (e) {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage(input);
+                }
+              }}
+              placeholder="Pose ta question..."
+              style={{
+                flex: 1,
+                background: C.tableBg,
+                border: "1px solid " + (C === DARK ? "#444" : "#D5D0CA"),
+                borderRadius: 10,
+                padding: "8px 12px",
+                fontSize: 13,
+                color: C.text,
+                outline: "none",
+              }}
+            />
+            <button
+              onClick={function () {
+                sendMessage(input);
+              }}
+              disabled={loading || !input.trim()}
+              style={{
+                background: C.beige,
+                border: "none",
+                borderRadius: 10,
+                width: 38,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: loading || !input.trim() ? 0.5 : 1,
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2.5"
+              >
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </div>
+          <style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}`}</style>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── NOTES ─────────────────────────────────────────────────
+function NotesTab({ notes, setNotes }) {
+  var C = useContext(ThemeCtx);
+  var [search, setSearch] = useState("");
+  var [modal, setModal] = useState(false);
+  var [editId, setEditId] = useState(null);
+  var [form, setForm] = useState({
+    titre: "",
+    contenu: "",
+    categorie: "Idée",
+    epingle: false,
+  });
+  var inp = {
+    background: C.tableBg,
+    border: "1px solid #D5D0CA",
+    borderRadius: 8,
+    padding: "7px 12px",
+    fontSize: 13,
+    color: C.text,
+    outline: "none",
+  };
+
+  function openNew() {
+    setForm({ titre: "", contenu: "", categorie: "Idée", epingle: false });
+    setEditId(null);
+    setModal(true);
+  }
+  function openEdit(note) {
+    setForm(Object.assign({}, note));
+    setEditId(note.id);
+    setModal(true);
+  }
+  function saveNote() {
+    if (!form.contenu || !form.contenu.trim()) return;
+    if (editId) {
+      setNotes(function (ns) {
+        return ns.map(function (n) {
+          return n.id === editId ? Object.assign({}, form, { id: editId }) : n;
+        });
+      });
+    } else {
+      setNotes(function (ns) {
+        return [
+          Object.assign({}, form, {
+            id: uid(),
+            date: new Date().toISOString().split("T")[0],
+          }),
+          ...ns,
+        ];
+      });
+    }
+    setModal(false);
+    setEditId(null);
+    setForm({ titre: "", contenu: "", categorie: "Idée", epingle: false });
+  }
+  function delNote(id) {
+    setNotes(function (ns) {
+      return ns.filter(function (n) {
+        return n.id !== id;
+      });
+    });
+  }
+  function togglePin(id) {
+    setNotes(function (ns) {
+      return ns.map(function (n) {
+        return n.id === id ? Object.assign({}, n, { epingle: !n.epingle }) : n;
+      });
+    });
+  }
+
+  var filtered = notes.filter(function (n) {
+    if (!search.trim()) return true;
+    var q = search.toLowerCase();
+    return (
+      (n.titre || "").toLowerCase().includes(q) ||
+      (n.contenu || "").toLowerCase().includes(q) ||
+      (n.categorie || "").toLowerCase().includes(q)
+    );
+  });
+  var sorted = filtered
+    .filter(function (n) {
+      return n.epingle;
+    })
+    .concat(
+      filtered.filter(function (n) {
+        return !n.epingle;
+      })
+    );
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <h2
+            style={{ fontSize: 20, fontWeight: 700, margin: 0, color: C.text }}
+          >
+            Notes
+          </h2>
+          <p style={{ color: C.textSec, fontSize: 13, margin: "4px 0 0" }}>
+            {notes.length} note{notes.length > 1 ? "s" : ""}
+          </p>
+        </div>
+        <Btn onClick={openNew}>+ Nouvelle note</Btn>
+      </div>
+      <div style={{ position: "relative", marginBottom: 16 }}>
+        <input
+          placeholder="Rechercher dans les notes..."
+          value={search}
+          onChange={function (e) {
+            setSearch(e.target.value);
+          }}
+          style={Object.assign({}, inp, {
+            width: "100%",
+            paddingLeft: 38,
+            boxSizing: "border-box",
+          })}
+        />
+        <span
+          style={{
+            position: "absolute",
+            left: 12,
+            top: "50%",
+            transform: "translateY(-50%)",
+            color: C.textSec,
+            display: "flex",
+          }}
+        >
+          <IconSearch color={C.textSec} />
+        </span>
+      </div>
+      <div
+        style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}
+      >
+        {NOTE_CATEGORIES.map(function (cat) {
+          var count = notes.filter(function (n) {
+            return n.categorie === cat;
+          }).length;
+          if (count === 0) return null;
+          var cc = NOTE_CAT_COLORS[cat];
+          return (
+            <span
+              key={cat}
+              style={{
+                background: cc + "22",
+                border: "1px solid " + cc + "44",
+                color: cc,
+                fontSize: 11,
+                padding: "4px 10px",
+                borderRadius: 99,
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+              }}
+              onClick={function () {
+                setSearch(cat);
+              }}
+            >
+              <span style={{ color: cc }}>
+                <NoteCatIcon cat={cat} />
+              </span>
+              {cat} · {count}
+            </span>
+          );
+        })}
+      </div>
+      {sorted.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "48px 20px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: 12,
+              color: C.tableBg,
+            }}
+          >
+            <IconNote color={C.tableBg} />
+          </div>
+          <div style={{ fontSize: 14, color: C.textSec }}>
+            {search
+              ? 'Aucun résultat pour "' + search + '"'
+              : "Aucune note. Crée ta première note !"}
+          </div>
+        </div>
+      ) : (
+        <div
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
+        >
+          {sorted.map(function (note) {
+            var cc = NOTE_CAT_COLORS[note.categorie] || C.gray;
+            return (
+              <div
+                key={note.id}
+                style={{
+                  background: C.cardBg,
+                  borderRadius: 14,
+                  padding: "16px",
+                  border: "1px solid " + (C === DARK ? "#333" : "#E2DDD7"),
+                  borderTop: "3px solid " + cc,
+                  position: "relative",
+                  cursor: "pointer",
+                }}
+                onClick={function () {
+                  openEdit(note);
+                }}
+              >
+                {note.epingle && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 10,
+                      right: 10,
+                      color: cc,
+                      display: "flex",
+                    }}
+                  >
+                    <IconPin color={cc} filled={true} size={13} />
+                  </span>
+                )}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 8,
+                  }}
+                >
+                  <span style={{ color: cc, display: "flex" }}>
+                    <NoteCatIcon cat={note.categorie} />
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: cc,
+                      background: cc + "18",
+                      padding: "2px 8px",
+                      borderRadius: 99,
+                    }}
+                  >
+                    {note.categorie}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: C.textSec,
+                      marginLeft: "auto",
+                      paddingRight: note.epingle ? 18 : 0,
+                    }}
+                  >
+                    {note.date}
+                  </span>
+                </div>
+                {note.titre && (
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: C.text,
+                      marginBottom: 6,
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {note.titre}
+                  </div>
+                )}
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: C.textSec,
+                    lineHeight: 1.6,
+                    overflow: "hidden",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 4,
+                    WebkitBoxOrient: "vertical",
+                  }}
+                >
+                  {note.contenu}
+                </div>
+                <div
+                  style={{ display: "flex", gap: 6, marginTop: 12 }}
+                  onClick={function (e) {
+                    e.stopPropagation();
+                  }}
+                >
+                  <button
+                    onClick={function (e) {
+                      e.stopPropagation();
+                      togglePin(note.id);
+                    }}
+                    style={{
+                      background: note.epingle ? cc + "22" : C.tableBg,
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "5px 10px",
+                      fontSize: 11,
+                      cursor: "pointer",
+                      color: note.epingle ? cc : C.textSec,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                    }}
+                  >
+                    <IconPin
+                      color={note.epingle ? cc : C.textSec}
+                      filled={note.epingle}
+                      size={11}
+                    />
+                    {note.epingle ? "Épinglé" : "Épingler"}
+                  </button>
+                  <button
+                    onClick={function (e) {
+                      e.stopPropagation();
+                      delNote(note.id);
+                    }}
+                    style={{
+                      background: C.tableBg,
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "5px 10px",
+                      fontSize: 11,
+                      cursor: "pointer",
+                      color: C.red,
+                      marginLeft: "auto",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                    }}
+                  >
+                    <IconTrash color={C.red} size={11} />
+                    Suppr.
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {modal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.5)",
+            zIndex: 200,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              background: C.cardBg,
+              borderRadius: "16px 16px 0 0",
+              padding: "24px 20px 32px",
+              width: "100%",
+              maxWidth: 560,
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 99,
+                background: C.tableBg,
+                margin: "0 auto 20px",
+              }}
+            />
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 20,
+              }}
+            >
+              <span style={{ fontSize: 16, fontWeight: 700, color: C.text }}>
+                {editId ? "Modifier la note" : "Nouvelle note"}
+              </span>
+              <button
+                onClick={function () {
+                  setModal(false);
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: 24,
+                  cursor: "pointer",
+                  color: C.textSec,
+                  lineHeight: 1,
+                }}
+              >
+                x
+              </button>
+            </div>
+            <Row>
+              <input
+                placeholder="Titre (optionnel)"
+                value={form.titre || ""}
+                onChange={function (e) {
+                  setForm(function (p) {
+                    return Object.assign({}, p, { titre: e.target.value });
+                  });
+                }}
+                style={Object.assign({}, inp, { flex: 1 })}
+              />
+            </Row>
+            <Row>
+              <select
+                value={form.categorie || "Idée"}
+                onChange={function (e) {
+                  setForm(function (p) {
+                    return Object.assign({}, p, { categorie: e.target.value });
+                  });
+                }}
+                style={Object.assign({}, inp, { flex: 1 })}
+              >
+                {NOTE_CATEGORIES.map(function (c) {
+                  return <option key={c}>{c}</option>;
+                })}
+              </select>
+            </Row>
+            <Row>
+              <textarea
+                placeholder="Écris ta note ici..."
+                value={form.contenu || ""}
+                onChange={function (e) {
+                  setForm(function (p) {
+                    return Object.assign({}, p, { contenu: e.target.value });
+                  });
+                }}
+                style={{
+                  background: C.tableBg,
+                  border: "1px solid #D5D0CA",
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  fontSize: 13,
+                  color: C.text,
+                  outline: "none",
+                  width: "100%",
+                  minHeight: 140,
+                  resize: "vertical",
+                  boxSizing: "border-box",
+                }}
+              />
+            </Row>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 12,
+              }}
+            >
+              <input
+                type="checkbox"
+                id="epingle"
+                checked={form.epingle || false}
+                onChange={function (e) {
+                  setForm(function (p) {
+                    return Object.assign({}, p, { epingle: e.target.checked });
+                  });
+                }}
+                style={{ width: 16, height: 16, cursor: "pointer" }}
+              />
+              <label
+                htmlFor="epingle"
+                style={{
+                  fontSize: 13,
+                  color: C.text,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <IconPin
+                  color={form.epingle ? C.beige : C.textSec}
+                  filled={form.epingle}
+                  size={13}
+                />
+                Épingler cette note
+              </label>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Btn
+                onClick={function () {
+                  setModal(false);
+                }}
+                bg={C.gray}
+                style={{ flex: 1 }}
+              >
+                Annuler
+              </Btn>
+              <Btn onClick={saveNote} style={{ flex: 1 }}>
+                Enregistrer
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ROUTINE BUILDER ───────────────────────────────────────
+function RoutineTab({ routines, setRoutines, routineLog, setRoutineLog }) {
+  var C = useContext(ThemeCtx);
+  var today = new Date();
+  var todayKey = today.toISOString().split("T")[0];
+  var todayLog = routineLog[todayKey] || { matin: {}, soir: {} };
+  var [active, setActive] = useState("matin");
+  var [modal, setModal] = useState(null);
+  var [form, setForm] = useState({});
+  var inp = {
+    background: C.tableBg,
+    border: "1px solid #D5D0CA",
+    borderRadius: 8,
+    padding: "7px 12px",
+    fontSize: 13,
+    color: C.text,
+    outline: "none",
+  };
+
+  function toggleStep(rk, sid) {
+    setRoutineLog(function (d) {
+      var nd = Object.assign({}, d);
+      nd[todayKey] = Object.assign({}, d[todayKey] || { matin: {}, soir: {} });
+      nd[todayKey][rk] = Object.assign({}, nd[todayKey][rk] || {});
+      nd[todayKey][rk][sid] = !nd[todayKey][rk][sid];
+      return nd;
+    });
+  }
+  function addStep(rk) {
+    if (!form.nom || !form.nom.trim()) return;
+    var duree = parseInt(form.duree) || 5;
+    setRoutines(function (r) {
+      var nr = Object.assign({}, r);
+      nr[rk] = Object.assign({}, r[rk]);
+      nr[rk].etapes = [
+        ...r[rk].etapes,
+        { id: uid(), nom: form.nom.trim(), duree: duree },
+      ];
+      return nr;
+    });
+    setModal(null);
+    setForm({});
+  }
+  function delStep(rk, sid) {
+    setRoutines(function (r) {
+      var nr = Object.assign({}, r);
+      nr[rk] = Object.assign({}, r[rk]);
+      nr[rk].etapes = r[rk].etapes.filter(function (e) {
+        return e.id !== sid;
+      });
+      return nr;
+    });
+  }
+
+  var routine = routines[active];
+  var logR = todayLog[active] || {};
+  var doneCount = routine.etapes.filter(function (e) {
+    return logR[e.id];
+  }).length;
+  var totalMin = routine.etapes.reduce(function (s, e) {
+    return s + (e.duree || 0);
+  }, 0);
+  var doneMin = routine.etapes
+    .filter(function (e) {
+      return logR[e.id];
+    })
+    .reduce(function (s, e) {
+      return s + (e.duree || 0);
+    }, 0);
+  var pct =
+    routine.etapes.length > 0
+      ? Math.round((doneCount / routine.etapes.length) * 100)
+      : 0;
+
+  var histData = Array.from({ length: 7 }, function (_, i) {
+    var d = new Date(today);
+    d.setDate(d.getDate() - (6 - i));
+    var k = d.toISOString().split("T")[0];
+    var log = routineLog[k] || {};
+    var maLog = log.matin || {};
+    var soLog = log.soir || {};
+    var maE = routines.matin.etapes;
+    var soE = routines.soir.etapes;
+    var maPct =
+      maE.length > 0
+        ? Math.round(
+            (maE.filter(function (e) {
+              return maLog[e.id];
+            }).length /
+              maE.length) *
+              100
+          )
+        : 0;
+    var soPct =
+      soE.length > 0
+        ? Math.round(
+            (soE.filter(function (e) {
+              return soLog[e.id];
+            }).length /
+              soE.length) *
+              100
+          )
+        : 0;
+    return {
+      jour: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"][
+        (d.getDay() + 6) % 7
+      ],
+      matin: maPct,
+      soir: soPct,
+      isToday: k === todayKey,
+    };
+  });
+
+  return (
+    <div>
+      <h2
+        style={{
+          fontSize: 20,
+          fontWeight: 700,
+          marginBottom: 4,
+          color: C.text,
+        }}
+      >
+        Routines
+      </h2>
+      <p style={{ color: C.textSec, fontSize: 13, marginBottom: 20 }}>
+        Construis et suis tes routines matin et soir
+      </p>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        {[
+          ["matin", "Matin"],
+          ["soir", "Soir"],
+        ].map(function (r) {
+          var isMatin = r[0] === "matin";
+          var isActive = active === r[0];
+          return (
+            <button
+              key={r[0]}
+              onClick={function () {
+                setActive(r[0]);
+              }}
+              style={{
+                flex: 1,
+                padding: "12px",
+                fontSize: 13,
+                fontWeight: 700,
+                borderRadius: 12,
+                border: "none",
+                cursor: "pointer",
+                background: isActive ? C.beige : C.tableBg,
+                color: isActive ? "#fff" : C.textSec,
+                transition: "all .2s",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              {isMatin ? (
+                <IconSun size={14} color={isActive ? "#fff" : C.textSec} />
+              ) : (
+                <IconMoon size={14} color={isActive ? "#fff" : C.textSec} />
+              )}
+              {r[1]}
+            </button>
+          );
+        })}
+      </div>
+      <Card style={{ marginBottom: 14 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 10,
+          }}
+        >
+          <SecTitle>
+            {routine.nom} —{" "}
+            {today.toLocaleDateString("fr-FR", {
+              day: "numeric",
+              month: "long",
+            })}
+          </SecTitle>
+          <span
+            style={{
+              fontSize: 12,
+              color: pct === 100 ? C.green : C.beige,
+              fontWeight: 700,
+            }}
+          >
+            {doneCount}/{routine.etapes.length}
+          </span>
+        </div>
+        <APBar pct={pct} color={pct === 100 ? C.green : C.beige} h={8} />
+        <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
+          <span style={{ fontSize: 12, color: C.textSec }}>
+            Total : <b style={{ color: C.text }}>{totalMin} min</b>
+          </span>
+          <span style={{ fontSize: 12, color: C.textSec }}>
+            Complété : <b style={{ color: C.green }}>{doneMin} min</b>
+          </span>
+          <span style={{ fontSize: 12, color: C.textSec }}>
+            Score :{" "}
+            <b style={{ color: pct === 100 ? C.green : C.beige }}>{pct}%</b>
+          </span>
+        </div>
+      </Card>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          marginBottom: 16,
+        }}
+      >
+        {routine.etapes.map(function (e) {
+          var checked = logR[e.id] || false;
+          return (
+            <div
+              key={e.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "12px 14px",
+                background: checked
+                  ? C === DARK
+                    ? "#1E2A1E"
+                    : "#EBF2EC"
+                  : C.cardBg,
+                borderRadius: 10,
+                border:
+                  "1px solid " +
+                  (checked ? C.green : C === DARK ? "#333" : "#E2DDD7"),
+                transition: "all .2s",
+              }}
+            >
+              <button
+                onClick={function () {
+                  toggleStep(active, e.id);
+                }}
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 6,
+                  border: "1.5px solid " + (checked ? C.green : C.gray),
+                  background: checked ? C.green : "transparent",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all .2s",
+                }}
+              >
+                {checked && (
+                  <span
+                    style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}
+                  >
+                    ✓
+                  </span>
+                )}
+              </button>
+              <div style={{ flex: 1 }}>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: checked ? C.green : C.text,
+                    textDecoration: checked ? "line-through" : "none",
+                  }}
+                >
+                  {e.nom}
+                </span>
+              </div>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: C.textSec,
+                  background: C.tableBg,
+                  padding: "2px 8px",
+                  borderRadius: 99,
+                  flexShrink: 0,
+                }}
+              >
+                {e.duree} min
+              </span>
+              <Del
+                onClick={function () {
+                  delStep(active, e.id);
+                }}
+              />
+            </div>
+          );
+        })}
+        <button
+          onClick={function () {
+            setModal(active);
+            setForm({ nom: "", duree: 5 });
+          }}
+          style={{
+            border: "2px dashed " + (C === DARK ? "#444" : "#D5D0CA"),
+            borderRadius: 10,
+            padding: "12px",
+            background: "transparent",
+            color: C.textSec,
+            cursor: "pointer",
+            fontSize: 13,
+            fontWeight: 500,
+          }}
+        >
+          + Ajouter une étape
+        </button>
+      </div>
+      <Card>
+        <SecTitle>Historique 7 jours</SecTitle>
+        <ResponsiveContainer width="100%" height={140}>
+          <BarChart
+            data={histData}
+            barSize={14}
+            margin={{ top: 4, right: 4, left: -28, bottom: 0 }}
+          >
+            <XAxis
+              dataKey="jour"
+              tick={{ fontSize: 10, fill: C.textSec }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 9, fill: C.textSec }}
+              axisLine={false}
+              tickLine={false}
+              unit="%"
+              domain={[0, 100]}
+            />
+            <Tooltip
+              contentStyle={{
+                background: C.cardBg,
+                border: "1px solid " + (C === DARK ? "#444" : "#E2DDD7"),
+                borderRadius: 8,
+                fontSize: 11,
+                color: C.text,
+              }}
+            />
+            <Bar
+              dataKey="matin"
+              name="Matin"
+              fill={C.beige}
+              fillOpacity={0.85}
+              radius={[3, 3, 0, 0]}
+            />
+            <Bar
+              dataKey="soir"
+              name="Soir"
+              fill={C.blue}
+              fillOpacity={0.7}
+              radius={[3, 3, 0, 0]}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+        <div
+          style={{
+            display: "flex",
+            gap: 16,
+            justifyContent: "center",
+            marginTop: 8,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 11,
+              color: C.textSec,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 2,
+                background: C.beige,
+              }}
+            />
+            Matin
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              color: C.textSec,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 2,
+                background: C.blue,
+              }}
+            />
+            Soir
+          </span>
+        </div>
+      </Card>
+      {modal && (
+        <Modal
+          title={"Nouvelle étape — " + (modal === "matin" ? "Matin" : "Soir")}
+          onClose={function () {
+            setModal(null);
+            setForm({});
+          }}
+        >
+          <Row>
+            <input
+              placeholder="Nom de l'étape"
+              value={form.nom || ""}
+              onChange={function (e) {
+                setForm(function (p) {
+                  return Object.assign({}, p, { nom: e.target.value });
+                });
+              }}
+              style={Object.assign({}, inp, { flex: 1 })}
+            />
+          </Row>
+          <Row>
+            <input
+              type="number"
+              min="1"
+              max="120"
+              placeholder="Durée (min)"
+              value={form.duree || ""}
+              onChange={function (e) {
+                setForm(function (p) {
+                  return Object.assign({}, p, { duree: e.target.value });
+                });
+              }}
+              style={Object.assign({}, inp, { flex: 1 })}
+            />
+          </Row>
+          <MF
+            onClose={function () {
+              setModal(null);
+              setForm({});
+            }}
+            onSave={function () {
+              addStep(modal);
+            }}
+          />
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── WELLBEING CARD ────────────────────────────────────────
+function WellbeingCard({
+  score,
+  habitData,
+  habitudes,
+  moodData,
+  sommeilData,
+  sportData,
+}) {
+  var C = useContext(ThemeCtx);
+  var today = new Date();
+  var todayKey = today.toISOString().split("T")[0];
+  var color = wbColor(score);
+  var label = wbLabel(score);
+  var history = Array.from({ length: 7 }, function (_, i) {
+    var d = new Date(today);
+    d.setDate(d.getDate() - (6 - i));
+    var k = d.toISOString().split("T")[0];
+    return {
+      jour: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"][
+        (d.getDay() + 6) % 7
+      ],
+      score: calcWellbeing(
+        k,
+        habitData,
+        habitudes,
+        moodData,
+        sommeilData,
+        sportData
+      ),
+      isToday: k === todayKey,
+    };
+  });
+  var td = habitData[todayKey] || {};
+  var hd = habitudes.filter(function (h) {
+    return td[h.id];
+  }).length;
+  var hs = habitudes.length > 0 ? Math.round((hd / habitudes.length) * 30) : 0;
+  var m = moodData[todayKey] || 0;
+  var ms = m ? Math.round((m / 5) * 25) : 0;
+  var s = parseFloat(sommeilData[todayKey]) || 0;
+  var ss = s >= 8 ? 25 : s >= 6 ? 18 : s >= 4 ? 10 : s > 0 ? 5 : 0;
+  var ws2 = new Date(today);
+  var dw = ws2.getDay();
+  ws2.setDate(ws2.getDate() + (dw === 0 ? -6 : 1 - dw));
+  var sp = sportData.filter(function (x) {
+    return x.date && new Date(x.date) >= ws2;
+  }).length;
+  var sps = sp >= 4 ? 20 : sp >= 3 ? 16 : sp >= 2 ? 12 : sp >= 1 ? 6 : 0;
+  var comps = [
+    { label: "Habitudes", score: hs, max: 30, color: C.green },
+    { label: "Humeur", score: ms, max: 25, color: C.blue },
+    { label: "Sommeil", score: ss, max: 25, color: C.beige },
+    { label: "Sport", score: sps, max: 20, color: "#8A7B94" },
+  ];
+  var circ = 2 * Math.PI * 44;
+  var dashOffset = circ * (1 - score / 100);
+  return (
+    <Card>
+      <SecTitle>Score Bien-être — Aujourd'hui</SecTitle>
+      <div
+        style={{
+          display: "flex",
+          gap: 20,
+          alignItems: "center",
+          marginBottom: 16,
+        }}
+      >
+        <div
+          style={{
+            position: "relative",
+            width: 100,
+            height: 100,
+            flexShrink: 0,
+          }}
+        >
+          <svg width="100" height="100" style={{ transform: "rotate(-90deg)" }}>
+            <circle
+              cx="50"
+              cy="50"
+              r="44"
+              fill="none"
+              stroke={C.tableBg}
+              strokeWidth="8"
+            />
+            <circle
+              cx="50"
+              cy="50"
+              r="44"
+              fill="none"
+              stroke={color}
+              strokeWidth="8"
+              strokeDasharray={circ}
+              strokeDashoffset={dashOffset}
+              strokeLinecap="round"
+              style={{ transition: "stroke-dashoffset 1s ease, stroke .5s" }}
+            />
+          </svg>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <span style={{ fontSize: 22, fontWeight: 800, color: color }}>
+              {score}
+            </span>
+            <span
+              style={{
+                fontSize: 9,
+                color: C.textSec,
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              /100
+            </span>
+          </div>
+        </div>
+        <div
+          style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}
+        >
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: color,
+              marginBottom: 2,
+            }}
+          >
+            {label}
+          </div>
+          {comps.map(function (comp) {
+            return (
+              <div key={comp.label}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: 11,
+                    marginBottom: 3,
+                  }}
+                >
+                  <span style={{ color: C.textSec }}>{comp.label}</span>
+                  <span style={{ color: C.text, fontWeight: 600 }}>
+                    {comp.score}/{comp.max}
+                  </span>
+                </div>
+                <APBar
+                  pct={(comp.score / comp.max) * 100}
+                  color={comp.color}
+                  h={4}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={80}>
+        <BarChart
+          data={history}
+          barSize={18}
+          margin={{ top: 4, right: 4, left: -28, bottom: 0 }}
+        >
+          <XAxis
+            dataKey="jour"
+            tick={{ fontSize: 9, fill: C.textSec }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fontSize: 9, fill: C.textSec }}
+            axisLine={false}
+            tickLine={false}
+            domain={[0, 100]}
+          />
+          <Tooltip
+            formatter={function (v) {
+              return [v + "/100", "Bien-être"];
+            }}
+            contentStyle={{
+              background: C.cardBg,
+              border: "1px solid " + (C === DARK ? "#444" : "#E2DDD7"),
+              borderRadius: 8,
+              fontSize: 11,
+              color: C.text,
+            }}
+          />
+          <Bar dataKey="score" radius={[3, 3, 0, 0]}>
+            {history.map(function (d, i) {
+              return (
+                <Cell
+                  key={i}
+                  fill={d.isToday ? color : C.blue}
+                  fillOpacity={d.isToday ? 1 : 0.5}
+                />
+              );
+            })}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </Card>
+  );
+}
+
+// ── COMPARATIF ────────────────────────────────────────────
+function ComparatifSemaine({
+  habitudes,
+  habitData,
+  taches,
+  sportData,
+  moodData,
+  sommeilData,
+}) {
+  var C = useContext(ThemeCtx);
+  var today = new Date();
+  function getWeekKeys(offset) {
+    var d = new Date(today);
+    var day = d.getDay();
+    var diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff + offset * 7);
+    var keys = [];
+    for (var i = 0; i < 7; i++) {
+      keys.push(d.toISOString().split("T")[0]);
+      d.setDate(d.getDate() + 1);
+    }
+    return keys;
+  }
+  var tw = getWeekKeys(0);
+  var lw = getWeekKeys(-1);
+  function avgH(keys) {
+    if (!habitudes.length) return 0;
+    var t = keys.reduce(function (s, k) {
+      var d = habitData[k] || {};
+      return (
+        s +
+        habitudes.filter(function (h) {
+          return d[h.id];
+        }).length
+      );
+    }, 0);
+    return Math.round((t / (keys.length * habitudes.length)) * 100);
+  }
+  function cntT(keys) {
+    return taches.filter(function (t) {
+      return (
+        t.statut === "Termine" &&
+        keys.some(function (k) {
+          return t.echeance === k;
+        })
+      );
+    }).length;
+  }
+  function cntS(keys) {
+    return sportData.filter(function (s) {
+      return keys.includes(s.date);
+    }).length;
+  }
+  function avgWB(keys) {
+    var sc = keys
+      .map(function (k) {
+        return calcWellbeing(
+          k,
+          habitData,
+          habitudes,
+          moodData,
+          sommeilData,
+          sportData
+        );
+      })
+      .filter(function (v) {
+        return v > 0;
+      });
+    if (!sc.length) return 0;
+    return Math.round(
+      sc.reduce(function (s, v) {
+        return s + v;
+      }, 0) / sc.length
+    );
+  }
+  var metrics = [
+    { label: "Habitudes", this: avgH(tw), last: avgH(lw), unit: "%" },
+    { label: "Tâches finies", this: cntT(tw), last: cntT(lw), unit: "" },
+    { label: "Bien-être moy.", this: avgWB(tw), last: avgWB(lw), unit: "/100" },
+    { label: "Sport", this: cntS(tw), last: cntS(lw), unit: " séances" },
+  ];
+  var days = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+  var chartData = days.map(function (j, i) {
+    var tk = tw[i];
+    var lk = lw[i];
+    var tH =
+      habitudes.length > 0
+        ? Math.round(
+            (habitudes.filter(function (h) {
+              return (habitData[tk] || {})[h.id];
+            }).length /
+              habitudes.length) *
+              100
+          )
+        : 0;
+    var lH =
+      habitudes.length > 0
+        ? Math.round(
+            (habitudes.filter(function (h) {
+              return (habitData[lk] || {})[h.id];
+            }).length /
+              habitudes.length) *
+              100
+          )
+        : 0;
+    return { jour: j, cette: tH, derniere: lH };
+  });
+  return (
+    <Card>
+      <SecTitle>Comparatif — Cette semaine vs Dernière</SecTitle>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 10,
+          marginBottom: 16,
+        }}
+      >
+        {metrics.map(function (m) {
+          var diff = m.this - m.last;
+          var isPos = diff > 0;
+          var isNeg = diff < 0;
+          var dc = isPos ? C.green : isNeg ? C.red : C.textSec;
+          return (
+            <div
+              key={m.label}
+              style={{
+                background: C.tableBg,
+                borderRadius: 10,
+                padding: "12px 14px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 10,
+                  color: C.textSec,
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  marginBottom: 6,
+                }}
+              >
+                {m.label}
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: C.text }}>
+                {m.this}
+                {m.unit}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  marginTop: 4,
+                }}
+              >
+                <span style={{ fontSize: 11, color: dc, fontWeight: 700 }}>
+                  {isPos ? "+" : ""}
+                  {diff}
+                  {m.unit}
+                </span>
+                <span style={{ fontSize: 10, color: C.textSec }}>
+                  vs sem. passée
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div
+        style={{
+          fontSize: 11,
+          color: C.textSec,
+          marginBottom: 8,
+          fontWeight: 600,
+        }}
+      >
+        Habitudes / jour (%)
+      </div>
+      <ResponsiveContainer width="100%" height={120}>
+        <BarChart
+          data={chartData}
+          barSize={10}
+          margin={{ top: 4, right: 4, left: -28, bottom: 0 }}
+        >
+          <XAxis
+            dataKey="jour"
+            tick={{ fontSize: 9, fill: C.textSec }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fontSize: 9, fill: C.textSec }}
+            axisLine={false}
+            tickLine={false}
+            unit="%"
+            domain={[0, 100]}
+          />
+          <Tooltip
+            contentStyle={{
+              background: C.cardBg,
+              border: "1px solid " + (C === DARK ? "#444" : "#E2DDD7"),
+              borderRadius: 8,
+              fontSize: 11,
+              color: C.text,
+            }}
+          />
+          <Bar
+            dataKey="cette"
+            name="Cette semaine"
+            fill={C.beige}
+            fillOpacity={0.9}
+            radius={[3, 3, 0, 0]}
+          />
+          <Bar
+            dataKey="derniere"
+            name="Sem. dernière"
+            fill={C.blue}
+            fillOpacity={0.5}
+            radius={[3, 3, 0, 0]}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+      <div
+        style={{
+          display: "flex",
+          gap: 16,
+          justifyContent: "center",
+          marginTop: 8,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 11,
+            color: C.textSec,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <div
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 2,
+              background: C.beige,
+            }}
+          />
+          Cette semaine
+        </span>
+        <span
+          style={{
+            fontSize: 11,
+            color: C.textSec,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <div
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 2,
+              background: C.blue,
+              opacity: 0.5,
+            }}
+          />
+          Sem. dernière
+        </span>
+      </div>
+    </Card>
+  );
+}
+
+// ── LOGIN ─────────────────────────────────────────────────
+function LoginScreen({ onLogin, C }) {
   var [input, setInput] = useState("");
   var [error, setError] = useState(false);
   var [show, setShow] = useState(false);
-  function handleSubmit() {
+  function submit() {
     if (input === APP_PASSWORD) {
-      p.onLogin();
+      onLogin();
     } else {
       setError(true);
       setTimeout(function () {
@@ -970,31 +3315,17 @@ function LoginScreen(p) {
                 N/S
               </span>
             </div>
-            <div style={{ textAlign: "left" }}>
-              <span
-                style={{
-                  fontSize: 28,
-                  fontWeight: 900,
-                  letterSpacing: "-0.04em",
-                  color: C.text,
-                }}
-              >
+            <div>
+              <span style={{ fontSize: 28, fontWeight: 900, color: C.text }}>
                 Noa
               </span>
-              <span
-                style={{
-                  fontSize: 28,
-                  fontWeight: 900,
-                  letterSpacing: "-0.04em",
-                  color: C.beige,
-                }}
-              >
+              <span style={{ fontSize: 28, fontWeight: 900, color: C.beige }}>
                 OS
               </span>
             </div>
           </div>
-          <p style={{ color: C.textSec, fontSize: 13, marginTop: 0 }}>
-            Connecte-toi pour accéder à ton espace
+          <p style={{ color: C.textSec, fontSize: 13 }}>
+            Connecte-toi pour acceder a ton espace
           </p>
         </div>
         <div style={{ marginBottom: 16 }}>
@@ -1013,14 +3344,14 @@ function LoginScreen(p) {
           <div style={{ position: "relative" }}>
             <input
               type={show ? "text" : "password"}
-              placeholder="••••••••"
+              placeholder="..."
               value={input}
               onChange={function (e) {
                 setInput(e.target.value);
                 setError(false);
               }}
               onKeyDown={function (e) {
-                if (e.key === "Enter") handleSubmit();
+                if (e.key === "Enter") submit();
               }}
               style={{
                 background: C.tableBg,
@@ -1049,10 +3380,10 @@ function LoginScreen(p) {
                 border: "none",
                 cursor: "pointer",
                 color: C.textSec,
-                fontSize: 16,
+                fontSize: 14,
               }}
             >
-              {show ? "🙈" : "👁"}
+              {show ? "hide" : "show"}
             </button>
           </div>
           {error && (
@@ -1062,7 +3393,7 @@ function LoginScreen(p) {
           )}
         </div>
         <button
-          onClick={handleSubmit}
+          onClick={submit}
           style={{
             width: "100%",
             background: C.beige,
@@ -1075,28 +3406,29 @@ function LoginScreen(p) {
             cursor: "pointer",
           }}
         >
-          Accéder au dashboard
+          Acceder au dashboard
         </button>
       </div>
     </div>
   );
 }
 
+// ── POMODORO ──────────────────────────────────────────────
 function PomodoroTimer() {
   var C = useContext(ThemeCtx);
   var [mode, setMode] = useState("focus");
-  var DURATIONS = { focus: 25 * 60, short: 5 * 60, long: 15 * 60 };
-  var [timeLeft, setTimeLeft] = useState(DURATIONS.focus);
+  var DUR = { focus: 25 * 60, short: 5 * 60, long: 15 * 60 };
+  var [timeLeft, setTimeLeft] = useState(DUR.focus);
   var [running, setRunning] = useState(false);
   var [sessions, setSessions] = useState(0);
-  var intervalRef = useRef(null);
+  var iv = useRef(null);
   useEffect(
     function () {
       if (running) {
-        intervalRef.current = setInterval(function () {
+        iv.current = setInterval(function () {
           setTimeLeft(function (t) {
             if (t <= 1) {
-              clearInterval(intervalRef.current);
+              clearInterval(iv.current);
               setRunning(false);
               if (mode === "focus")
                 setSessions(function (s) {
@@ -1106,38 +3438,38 @@ function PomodoroTimer() {
                 "Notification" in window &&
                 Notification.permission === "granted"
               )
-                new Notification("NosaOS", {
+                new Notification("NoaOS", {
                   body:
                     mode === "focus"
-                      ? "Session terminée ! Pause bien méritée."
-                      : "Pause terminée ! Au travail.",
+                      ? "Session terminee !"
+                      : "Pause terminee !",
                 });
-              return DURATIONS[mode];
+              return DUR[mode];
             }
             return t - 1;
           });
         }, 1000);
       }
       return function () {
-        clearInterval(intervalRef.current);
+        clearInterval(iv.current);
       };
     },
     [running, mode]
   );
   function changeMode(m) {
     setMode(m);
-    setTimeLeft(DURATIONS[m]);
+    setTimeLeft(DUR[m]);
     setRunning(false);
-    clearInterval(intervalRef.current);
+    clearInterval(iv.current);
   }
-  var pct = (timeLeft / DURATIONS[mode]) * 100;
+  var pct = (timeLeft / DUR[mode]) * 100;
   var min = Math.floor(timeLeft / 60);
   var sec = timeLeft % 60;
   var r = 54;
   var circ = 2 * Math.PI * r;
   return (
     <Card>
-      <SecTitle>Mode Focus — Pomodoro</SecTitle>
+      <SecTitle>Mode Focus - Pomodoro</SecTitle>
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         {[
           ["focus", "Focus 25min"],
@@ -1234,13 +3566,13 @@ function PomodoroTimer() {
               cursor: "pointer",
             }}
           >
-            {running ? "Pause" : "Démarrer"}
+            {running ? "Pause" : "Start"}
           </button>
           <button
             onClick={function () {
               setRunning(false);
-              setTimeLeft(DURATIONS[mode]);
-              clearInterval(intervalRef.current);
+              setTimeLeft(DUR[mode]);
+              clearInterval(iv.current);
             }}
             style={{
               background: C.tableBg,
@@ -1252,7 +3584,7 @@ function PomodoroTimer() {
               cursor: "pointer",
             }}
           >
-            ↺
+            Reset
           </button>
         </div>
       </div>
@@ -1260,7 +3592,13 @@ function PomodoroTimer() {
   );
 }
 
+// ── APP ───────────────────────────────────────────────────
 export default function App() {
+  useEffect(function () {
+    document.body.style.margin = "0";
+    document.body.style.padding = "0";
+    document.body.style.overflowX = "hidden";
+  }, []);
   var [auth, setAuth] = useSynced("auth_v1", false);
   var [darkMode, setDarkMode] = useState(isDark());
   var [manualDark, setManualDark] = useState(null);
@@ -1293,12 +3631,18 @@ export default function App() {
   var [countdowns, setCountdowns] = useSynced("countdowns_v1", []);
   var [retroData, setRetroData] = useSynced("retro_v1", {});
   var [visionBoard, setVisionBoard] = useSynced("visionboard_v1", []);
+  var [routines, setRoutines] = useSynced("routines_v1", DEF_ROUTINES);
+  var [routineLog, setRoutineLog] = useSynced("routinelog_v1", {});
+  var [notes, setNotes] = useSynced("notes_v1", []);
+  var [versetOffset, setVersetOffset] = useState(0);
   var [modal, setModal] = useState(null);
   var [form, setForm] = useState({});
   var [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   var [menuOpen, setMenuOpen] = useState(false);
   var [permission, setPermission] = useState("default");
   var [bannerDismissed, setBannerDismissed] = useSynced("banner_dismissed", "");
+  var [confetti, setConfetti] = useState(false);
+  var prevHabitDone = useRef(0);
 
   useEffect(function () {
     var h = function () {
@@ -1318,7 +3662,6 @@ export default function App() {
   var mois = MOIS[moisIdx];
   var moisData = habitData[mois] || {};
   var todayData = habitData[todayKey] || {};
-
   function getStreak(hid) {
     var streak = 0;
     var d = new Date(today);
@@ -1334,10 +3677,10 @@ export default function App() {
   }
 
   var terminees = taches.filter(function (t) {
-    return t.statut === "Terminé";
+    return t.statut === "Termine";
   }).length;
   var enRetard = taches.filter(function (t) {
-    return t.statut !== "Terminé" && t.echeance && new Date(t.echeance) < today;
+    return t.statut !== "Termine" && t.echeance && new Date(t.echeance) < today;
   }).length;
   var totalObj = habitudes.reduce(function (s, h) {
     return s + h.obj;
@@ -1365,8 +3708,8 @@ export default function App() {
   }, 0);
   var alertes = taches.filter(function (t) {
     var r =
-      t.statut !== "Terminé" && t.echeance && new Date(t.echeance) < today;
-    var u = t.statut !== "Terminé" && t.priorite === "Urgent";
+      t.statut !== "Termine" && t.echeance && new Date(t.echeance) < today;
+    var u = t.statut !== "Termine" && t.priorite === "Urgent";
     return r || u;
   });
   var showBanner = alertes.length > 0 && bannerDismissed !== todayKey;
@@ -1374,9 +3717,34 @@ export default function App() {
   var todayGratitude = gratitudeData[todayKey] || { g1: "", g2: "", g3: "" };
   var todaySommeil = sommeilData[todayKey] || "";
   var affirmation = AFFIRMATIONS[affirmIdx % AFFIRMATIONS.length];
-  var citation = getCitationDuJour();
+  var wellbeingScore = calcWellbeing(
+    todayKey,
+    habitData,
+    habitudes,
+    moodData,
+    sommeilData,
+    sportData
+  );
 
-  // Graphique habitudes semaine
+  useEffect(
+    function () {
+      if (
+        habitWeekDone === habitudes.length &&
+        habitudes.length > 0 &&
+        prevHabitDone.current < habitudes.length
+      ) {
+        setConfetti(true);
+      }
+      prevHabitDone.current = habitWeekDone;
+    },
+    [habitWeekDone]
+  );
+
+  var animTerminees = useCountUp(terminees);
+  var animEnRetard = useCountUp(enRetard);
+  var animTaux = useCountUp(tauxHabit);
+  var animWB = useCountUp(wellbeingScore);
+
   var weekHabitData = (function () {
     var days = [];
     var now = new Date(today);
@@ -1401,18 +3769,14 @@ export default function App() {
     }
     return days;
   })();
-
-  // Graphique livres par mois
   var livresChartData = MOIS.map(function (m, mi) {
     var count = livres.filter(function (l) {
       return (
-        l.statut === "Terminé" && l.date && new Date(l.date).getMonth() === mi
+        l.statut === "Termine" && l.date && new Date(l.date).getMonth() === mi
       );
     }).length;
     return { mois: m, livres: count };
   });
-
-  // Countdowns
   var countdownsWithDays = countdowns
     .map(function (c) {
       var diff = Math.ceil((new Date(c.date) - today) / (1000 * 60 * 60 * 24));
@@ -1421,8 +3785,6 @@ export default function App() {
     .sort(function (a, b) {
       return a.jours - b.jours;
     });
-
-  // Rétrospective
   var retroKey = new Date().toISOString().substring(0, 7);
   var retroMois = retroData[retroKey] || {
     victoires: "",
@@ -1431,7 +3793,6 @@ export default function App() {
     gratitude: "",
     note: 3,
   };
-
   var depData = [
     {
       name: "Fixes",
@@ -1500,20 +3861,19 @@ export default function App() {
       var nd = Object.assign({}, d);
       nd[dayKey] = Object.assign({}, d[dayKey] || {});
       nd[dayKey][hid] = !nd[dayKey][hid];
-      var yearMonth = dayKey.substring(0, 7);
-      var monthCount = 0;
+      var ym = dayKey.substring(0, 7);
+      var mc = 0;
       Object.keys(nd).forEach(function (k) {
-        if (k.length === 10 && k.startsWith(yearMonth) && nd[k] && nd[k][hid])
-          monthCount++;
+        if (k.length === 10 && k.startsWith(ym) && nd[k] && nd[k][hid]) mc++;
       });
-      var moisStr = MOIS[new Date(dayKey).getMonth()];
-      nd[moisStr] = Object.assign({}, nd[moisStr] || {});
-      nd[moisStr][hid] = monthCount;
+      var ms = MOIS[new Date(dayKey).getMonth()];
+      nd[ms] = Object.assign({}, nd[ms] || {});
+      nd[ms][hid] = mc;
       return nd;
     });
   }
 
-  function open(type, data) {
+  function openModal(type, data) {
     setModal(type);
     setForm(Object.assign({}, data || {}));
   }
@@ -1528,7 +3888,6 @@ export default function App() {
       return n;
     });
   }
-
   function saveTache() {
     if (!form.nom || !form.nom.trim()) return;
     if (form.id)
@@ -1540,7 +3899,7 @@ export default function App() {
     else
       setTaches(function (ts) {
         return ts.concat([
-          Object.assign({}, form, { id: uid(), statut: "Pas commencé" }),
+          Object.assign({}, form, { id: uid(), statut: "Pas commence" }),
         ]);
       });
     close();
@@ -1557,7 +3916,7 @@ export default function App() {
       return ts.map(function (t) {
         return t.id === id
           ? Object.assign({}, t, {
-              statut: t.statut === "Terminé" ? "En cours" : "Terminé",
+              statut: t.statut === "Termine" ? "En cours" : "Termine",
             })
           : t;
       });
@@ -1611,7 +3970,7 @@ export default function App() {
           Object.assign({}, form, {
             id: uid(),
             prog: prog,
-            statut: form.statut || "Planifié",
+            statut: form.statut || "Planifie",
           }),
         ]);
       });
@@ -1807,14 +4166,16 @@ export default function App() {
     { id: "dashboard", label: "Accueil" },
     { id: "todo", label: "To Do" },
     { id: "habitudes", label: "Habitudes" },
+    { id: "routines", label: "Routines" },
+    { id: "notes", label: "Notes" },
     { id: "budget", label: "Budget" },
     { id: "vision", label: "Vision" },
     { id: "projets", label: "Projets" },
     { id: "focus", label: "Focus" },
     { id: "lecture", label: "Lecture" },
-    { id: "sante", label: "Santé" },
+    { id: "sante", label: "Sante" },
     { id: "countdown", label: "Countdown" },
-    { id: "retro", label: "Rétrospective" },
+    { id: "retro", label: "Retro" },
   ];
   var g2 = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 };
   var g4 = {
@@ -1822,27 +4183,7 @@ export default function App() {
     gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)",
     gap: 12,
   };
-
-  var TABS = [
-    { id: "dashboard", label: "Accueil" },
-    { id: "todo", label: "To Do" },
-    { id: "habitudes", label: "Habitudes" },
-    { id: "budget", label: "Budget" },
-    { id: "vision", label: "Vision" },
-    { id: "projets", label: "Projets" },
-    { id: "focus", label: "Focus" },
-    { id: "lecture", label: "Lecture" },
-    { id: "sante", label: "Santé" },
-    { id: "countdown", label: "Countdown" },
-    { id: "retro", label: "Rétrospective" },
-  ];
-  var g2 = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 };
-  var g4 = {
-    display: "grid",
-    gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)",
-    gap: 12,
-  };
-  var inpStyle = {
+  var inp = {
     background: C.tableBg,
     border: "1px solid #D5D0CA",
     borderRadius: 8,
@@ -1851,28 +4192,9 @@ export default function App() {
     color: C.text,
     outline: "none",
   };
+  var verset = getVersetDuJour(versetOffset);
 
-  var [confetti, setConfetti] = useState(false);
-  var prevHabitDone = useRef(0);
-  useEffect(
-    function () {
-      if (
-        habitWeekDone === habitudes.length &&
-        habitudes.length > 0 &&
-        prevHabitDone.current < habitudes.length
-      ) {
-        setConfetti(true);
-      }
-      prevHabitDone.current = habitWeekDone;
-    },
-    [habitWeekDone]
-  );
-
-  var animTerminees = useCountUp(terminees);
-  var animEnRetard = useCountUp(enRetard);
-  var animTaux = useCountUp(tauxHabit);
-
-  if (!auth)
+  if (auth === false)
     return (
       <LoginScreen
         onLogin={function () {
@@ -1891,9 +4213,9 @@ export default function App() {
           fontFamily: "'Inter',system-ui,sans-serif",
           color: C.text,
           transition: "background .4s",
+          overflowX: "hidden",
         }}
       >
-        {/* HEADER desktop */}
         {!isMobile && (
           <div
             style={{
@@ -1932,14 +4254,7 @@ export default function App() {
                   N/S
                 </span>
               </div>
-              <span
-                style={{
-                  color: C.white,
-                  fontWeight: 900,
-                  fontSize: 16,
-                  letterSpacing: "-0.02em",
-                }}
-              >
+              <span style={{ color: C.white, fontWeight: 900, fontSize: 16 }}>
                 Noa<span style={{ color: C.beige }}>OS</span>
               </span>
             </div>
@@ -1952,7 +4267,7 @@ export default function App() {
                       setTab(t.id);
                     }}
                     style={{
-                      padding: "14px 12px",
+                      padding: "14px 10px",
                       fontSize: 12,
                       fontWeight: 500,
                       border: "none",
@@ -1989,12 +4304,11 @@ export default function App() {
                 flexShrink: 0,
               }}
             >
-              {(manualDark !== null ? manualDark : darkMode) ? "☀" : "☾"}
+              {(manualDark !== null ? manualDark : darkMode) ? "Jour" : "Nuit"}
             </button>
           </div>
         )}
 
-        {/* HEADER mobile */}
         {isMobile && (
           <div
             style={{
@@ -2026,14 +4340,7 @@ export default function App() {
                 </span>
               </div>
               <div>
-                <div
-                  style={{
-                    color: C.white,
-                    fontWeight: 900,
-                    fontSize: 16,
-                    letterSpacing: "-0.02em",
-                  }}
-                >
+                <div style={{ color: C.white, fontWeight: 900, fontSize: 16 }}>
                   Noa<span style={{ color: C.beige }}>OS</span>
                 </div>
                 <div style={{ fontSize: 10, color: "#A8ABB0" }}>
@@ -2058,11 +4365,13 @@ export default function App() {
                   borderRadius: 20,
                   padding: "6px 10px",
                   cursor: "pointer",
-                  fontSize: 14,
+                  fontSize: 12,
                   color: C.white,
                 }}
               >
-                {(manualDark !== null ? manualDark : darkMode) ? "☀" : "☾"}
+                {(manualDark !== null ? manualDark : darkMode)
+                  ? "Jour"
+                  : "Nuit"}
               </button>
               <button
                 onClick={function () {
@@ -2176,7 +4485,6 @@ export default function App() {
                       textAlign: "left",
                     }}
                   >
-                    <span style={{ fontSize: 16 }}>{ICONS[t.id] || "·"}</span>
                     <span
                       style={{
                         fontSize: 14,
@@ -2204,21 +4512,10 @@ export default function App() {
               gap: 12,
             }}
           >
-            <div style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>
-              <span style={{ fontWeight: 700 }}>
-                ⚠ {alertes.length} tâche{alertes.length > 1 ? "s" : ""} urgente
-                {alertes.length > 1 ? "s" : ""} ou en retard
-              </span>
-              <span style={{ opacity: 0.85, marginLeft: 8 }}>
-                {alertes
-                  .slice(0, 2)
-                  .map(function (t) {
-                    return t.nom;
-                  })
-                  .join(", ")}
-                {alertes.length > 2 ? " +" + (alertes.length - 2) : ""}
-              </span>
-            </div>
+            <span style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>
+              {alertes.length} tache{alertes.length > 1 ? "s" : ""} urgente
+              {alertes.length > 1 ? "s" : ""} ou en retard
+            </span>
             <div
               style={{
                 display: "flex",
@@ -2241,7 +4538,7 @@ export default function App() {
                     fontWeight: 600,
                   }}
                 >
-                  Activer les notifs
+                  Activer notifs
                 </button>
               )}
               <button
@@ -2257,39 +4554,9 @@ export default function App() {
                   lineHeight: 1,
                 }}
               >
-                ×
+                x
               </button>
             </div>
-          </div>
-        )}
-        {!showBanner && permission === "default" && (
-          <div
-            style={{
-              background: C === DARK ? "#2A2218" : "#EDE4DA",
-              padding: "8px 18px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <span style={{ fontSize: 12, color: C.beige, fontWeight: 500 }}>
-              Reçois tes alertes tâches chaque matin à 8h30
-            </span>
-            <button
-              onClick={requestPermission}
-              style={{
-                background: C.beige,
-                border: "none",
-                color: "#fff",
-                borderRadius: 6,
-                padding: "4px 12px",
-                fontSize: 12,
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
-            >
-              Activer
-            </button>
           </div>
         )}
 
@@ -2305,28 +4572,34 @@ export default function App() {
               {tab === "dashboard" && (
                 <div>
                   {!isMobile && (
-                    <div style={{ marginBottom: 16 }}>
-                      <h1
-                        style={{
-                          fontSize: 22,
-                          fontWeight: 700,
-                          margin: 0,
-                          color: C.text,
-                        }}
-                      >
-                        Tableau de bord
-                      </h1>
-                      <p
-                        style={{ color: C.textSec, fontSize: 13, marginTop: 4 }}
-                      >
-                        {today.toLocaleDateString("fr-FR", {
-                          weekday: "long",
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })}
-                      </p>
-                    </div>
+                    <Anim delay={0}>
+                      <div style={{ marginBottom: 16 }}>
+                        <h1
+                          style={{
+                            fontSize: 22,
+                            fontWeight: 700,
+                            margin: 0,
+                            color: C.text,
+                          }}
+                        >
+                          Tableau de bord
+                        </h1>
+                        <p
+                          style={{
+                            color: C.textSec,
+                            fontSize: 13,
+                            marginTop: 4,
+                          }}
+                        >
+                          {today.toLocaleDateString("fr-FR", {
+                            weekday: "long",
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          })}
+                        </p>
+                      </div>
+                    </Anim>
                   )}
                   {isMobile && (
                     <h2
@@ -2337,390 +4610,331 @@ export default function App() {
                         color: C.text,
                       }}
                     >
-                      Bonjour 👋
+                      Bonjour Noa
                     </h2>
                   )}
 
                   {/* Affirmation */}
-                  <div
-                    style={{
-                      background: C === DARK ? "#1E1E28" : "#EAE6F8",
-                      borderRadius: 14,
-                      padding: "14px 18px",
-                      marginBottom: 14,
-                      borderLeft: "3px solid " + C.blue,
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 10,
-                          color: C.blue,
-                          fontWeight: 700,
-                          letterSpacing: "0.1em",
-                          textTransform: "uppercase",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Affirmation du jour
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          color: C.text,
-                          fontStyle: "italic",
-                        }}
-                      >
-                        {affirmation}
-                      </div>
-                    </div>
-                    <button
-                      onClick={function () {
-                        setAffirmIdx(function (i) {
-                          return (i + 1) % AFFIRMATIONS.length;
-                        });
-                      }}
+                  <Anim delay={0}>
+                    <div
                       style={{
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: C.blue,
-                        fontSize: 18,
-                        flexShrink: 0,
-                        padding: "0 0 0 12px",
+                        background: C === DARK ? "#1E1E28" : "#EAE6F8",
+                        borderRadius: 14,
+                        padding: "14px 18px",
+                        marginBottom: 14,
+                        borderLeft: "3px solid " + C.blue,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
                       }}
                     >
-                      ↻
-                    </button>
-                  </div>
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: C.blue,
+                            fontWeight: 700,
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                            marginBottom: 4,
+                          }}
+                        >
+                          Affirmation du jour
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: C.text,
+                            fontStyle: "italic",
+                          }}
+                        >
+                          {affirmation}
+                        </div>
+                      </div>
+                      <button
+                        onClick={function () {
+                          setAffirmIdx(function (i) {
+                            return (i + 1) % AFFIRMATIONS.length;
+                          });
+                        }}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: C.blue,
+                          fontSize: 18,
+                          flexShrink: 0,
+                          padding: "0 0 0 12px",
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </Anim>
 
                   {/* Citation */}
-                  <div
-                    style={{
-                      background: C === DARK ? "#1E2028" : "#F0EBE3",
-                      borderRadius: 14,
-                      padding: "14px 18px",
-                      marginBottom: 14,
-                      borderLeft: "3px solid " + C.beige,
-                    }}
-                  >
+                  <Anim delay={1}>
                     <div
                       style={{
-                        fontSize: 10,
-                        color: C.textSec,
-                        fontWeight: 700,
-                        letterSpacing: "0.1em",
-                        textTransform: "uppercase",
-                        marginBottom: 6,
-                      }}
-                    >
-                      Citation du jour
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: C.text,
-                        fontStyle: "italic",
-                        lineHeight: 1.6,
-                        marginBottom: 4,
-                      }}
-                    >
-                      « {citation.texte} »
-                    </div>
-                    <div
-                      style={{ fontSize: 11, color: C.beige, fontWeight: 600 }}
-                    >
-                      — {citation.auteur}
-                    </div>
-                  </div>
-
-                  {/* Countdown rapide */}
-                  {countdownsWithDays.filter(function (c) {
-                    return c.jours >= 0 && c.jours <= 30;
-                  }).length > 0 && (
-                    <div
-                      style={{
-                        background: C === DARK ? "#1E281E" : "#E8F2EA",
+                        background: C === DARK ? "#1E2028" : "#F0EBE3",
                         borderRadius: 14,
-                        padding: "12px 18px",
+                        padding: "14px 18px",
                         marginBottom: 14,
-                        borderLeft: "3px solid " + C.green,
+                        borderLeft: "3px solid " + C.beige,
                       }}
                     >
                       <div
                         style={{
                           fontSize: 10,
-                          color: C.green,
+                          color: C.textSec,
                           fontWeight: 700,
                           letterSpacing: "0.1em",
                           textTransform: "uppercase",
                           marginBottom: 6,
                         }}
                       >
-                        Prochaine échéance
+                        Citation du jour
                       </div>
-                      {(function () {
-                        var c = countdownsWithDays.find(function (x) {
-                          return x.jours >= 0;
-                        });
-                        if (!c) return null;
-                        return (
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontSize: 13,
-                                color: C.text,
-                                fontWeight: 500,
-                              }}
-                            >
-                              {c.nom}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: 18,
-                                fontWeight: 700,
-                                color:
-                                  c.jours <= 3
-                                    ? C.red
-                                    : c.jours <= 7
-                                    ? C.beige
-                                    : C.green,
-                              }}
-                            >
-                              {c.jours === 0 ? "Aujourd'hui" : c.jours + " j"}
-                            </span>
-                          </div>
-                        );
-                      })()}
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: C.text,
+                          fontStyle: "italic",
+                          lineHeight: 1.6,
+                          marginBottom: 4,
+                        }}
+                      >
+                        {getCitationDuJour().t}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: C.beige,
+                          fontWeight: 600,
+                        }}
+                      >
+                        — {getCitationDuJour().a}
+                      </div>
                     </div>
-                  )}
+                  </Anim>
 
-                  {/* KPIs */}
-                  <div style={Object.assign({}, g4, { marginBottom: 14 })}>
-                    {[
-                      {
-                        label: "Terminées",
-                        val: terminees + "/" + taches.length,
-                        sub:
-                          Math.round((terminees / (taches.length || 1)) * 100) +
-                          "%",
-                        accent: C.green,
-                      },
-                      {
-                        label: "En retard",
-                        val: enRetard,
-                        sub: "tâches",
-                        accent: C.red,
-                      },
-                      {
-                        label: "Habitudes",
-                        val: tauxHabit + "%",
-                        sub: mois,
-                        accent: C.blue,
-                      },
-                      {
-                        label: "Solde",
-                        val: fmt(solde),
-                        sub: "ce mois",
-                        accent: solde >= 0 ? C.green : C.red,
-                      },
-                    ].map(function (k, i) {
-                      return (
-                        <Card key={i} style={{ padding: "14px 16px" }}>
+                  {/* Verset biblique */}
+                  <Anim delay={2}>
+                    <div
+                      style={{
+                        background: C === DARK ? "#1A2020" : "#EAF3EC",
+                        borderRadius: 14,
+                        padding: "16px 18px",
+                        marginBottom: 14,
+                        borderLeft: "3px solid " + C.green,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        gap: 12,
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            marginBottom: 8,
+                          }}
+                        >
+                          <IconCross size={16} color={C.green} />
                           <div
                             style={{
                               fontSize: 10,
-                              fontWeight: 700,
-                              letterSpacing: "0.1em",
+                              color: C.green,
+                              fontWeight: 800,
+                              letterSpacing: "0.12em",
                               textTransform: "uppercase",
-                              color: C.textSec,
-                              marginBottom: 8,
                             }}
                           >
-                            {k.label}
+                            Verset du jour
                           </div>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: C.text,
+                            fontStyle: "italic",
+                            lineHeight: 1.8,
+                            marginBottom: 10,
+                          }}
+                        >
+                          « {verset.t} »
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
                           <div
                             style={{
-                              fontSize: isMobile ? 18 : 22,
+                              width: 24,
+                              height: 1,
+                              background: C.green,
+                              opacity: 0.4,
+                            }}
+                          />
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: C.green,
                               fontWeight: 700,
-                              color: k.accent,
                             }}
                           >
-                            {k.val}
+                            {verset.r}
                           </div>
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: C.textSec,
-                              marginTop: 3,
-                            }}
-                          >
-                            {k.sub}
-                          </div>
-                        </Card>
-                      );
-                    })}
-                  </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={function () {
+                          setVersetOffset(function (v) {
+                            return v + 1;
+                          });
+                        }}
+                        style={{
+                          background: "rgba(0,0,0,.05)",
+                          border: "none",
+                          cursor: "pointer",
+                          color: C.green,
+                          fontSize: 16,
+                          flexShrink: 0,
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          marginTop: 2,
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </Anim>
 
-                  {/* Graphiques principaux */}
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                      gap: 12,
-                      marginBottom: 12,
-                    }}
-                  >
-                    {/* Habitudes semaine */}
-                    <Card>
-                      <SecTitle>Habitudes cette semaine</SecTitle>
-                      <ResponsiveContainer width="100%" height={140}>
-                        <BarChart
-                          data={weekHabitData}
-                          barSize={18}
-                          margin={{ top: 4, right: 4, left: -28, bottom: 0 }}
-                        >
-                          <XAxis
-                            dataKey="jour"
-                            tick={{ fontSize: 10, fill: C.textSec }}
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <YAxis
-                            tick={{ fontSize: 9, fill: C.textSec }}
-                            axisLine={false}
-                            tickLine={false}
-                            domain={[0, habitudes.length || 1]}
-                          />
-                          <Tooltip
-                            formatter={function (v, n, p) {
-                              return [
-                                v + "/" + p.payload.total + " habitudes",
-                                "Réalisées",
-                              ];
-                            }}
-                            contentStyle={{
-                              background: C.cardBg,
-                              border:
-                                "1px solid " +
-                                (C === DARK ? "#444" : "#E2DDD7"),
-                              borderRadius: 8,
-                              fontSize: 11,
-                              color: C.text,
-                            }}
-                            cursor={{ fill: "rgba(128,128,128,.08)" }}
-                          />
-                          <Bar dataKey="done" radius={[4, 4, 0, 0]}>
-                            {weekHabitData.map(function (d, i) {
-                              return (
-                                <Cell
-                                  key={i}
-                                  fill={
-                                    d.isToday
-                                      ? C.beige
-                                      : d.done === habitudes.length &&
-                                        habitudes.length > 0
-                                      ? C.green
-                                      : C.blue
-                                  }
-                                  fillOpacity={0.8}
-                                />
-                              );
-                            })}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </Card>
+                  {/* KPIs */}
+                  <Anim delay={3}>
+                    <div style={Object.assign({}, g4, { marginBottom: 14 })}>
+                      {[
+                        {
+                          label: "Terminees",
+                          val: animTerminees + "/" + taches.length,
+                          sub:
+                            Math.round(
+                              (terminees / (taches.length || 1)) * 100
+                            ) + "%",
+                          accent: C.green,
+                        },
+                        {
+                          label: "En retard",
+                          val: animEnRetard,
+                          sub: "taches",
+                          accent: C.red,
+                        },
+                        {
+                          label: "Habitudes",
+                          val: animTaux + "%",
+                          sub: mois,
+                          accent: C.blue,
+                        },
+                        {
+                          label: "Bien-être",
+                          val: animWB + "/100",
+                          sub: wbLabel(wellbeingScore),
+                          accent: wbColor(wellbeingScore),
+                        },
+                      ].map(function (k, i) {
+                        return (
+                          <HCard key={i} style={{ padding: "14px 16px" }}>
+                            <div
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                letterSpacing: "0.1em",
+                                textTransform: "uppercase",
+                                color: C.textSec,
+                                marginBottom: 8,
+                              }}
+                            >
+                              {k.label}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: isMobile ? 18 : 22,
+                                fontWeight: 700,
+                                color: k.accent,
+                              }}
+                            >
+                              {k.val}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: C.textSec,
+                                marginTop: 3,
+                              }}
+                            >
+                              {k.sub}
+                            </div>
+                          </HCard>
+                        );
+                      })}
+                    </div>
+                  </Anim>
 
-                    {/* Habitudes mensuel */}
-                    <Card>
-                      <SecTitle>Habitudes — progression mensuelle</SecTitle>
-                      <ResponsiveContainer width="100%" height={140}>
-                        <BarChart
-                          data={habitBarData}
-                          barSize={14}
-                          margin={{ top: 4, right: 4, left: -28, bottom: 0 }}
-                        >
-                          <XAxis
-                            dataKey="mois"
-                            tick={{ fontSize: 9, fill: C.textSec }}
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <YAxis
-                            tick={{ fontSize: 9, fill: C.textSec }}
-                            axisLine={false}
-                            tickLine={false}
-                            unit="%"
-                            domain={[0, 100]}
-                          />
-                          <Tooltip
-                            formatter={function (v) {
-                              return [v + "%", "Taux"];
-                            }}
-                            contentStyle={{
-                              background: C.cardBg,
-                              border:
-                                "1px solid " +
-                                (C === DARK ? "#444" : "#E2DDD7"),
-                              borderRadius: 8,
-                              fontSize: 11,
-                              color: C.text,
-                            }}
-                            cursor={{ fill: "rgba(128,128,128,.08)" }}
-                          />
-                          <Bar dataKey="taux" radius={[4, 4, 0, 0]}>
-                            {habitBarData.map(function (d, i) {
-                              return (
-                                <Cell
-                                  key={i}
-                                  fill={d.active ? C.beige : C.blue}
-                                  fillOpacity={0.8}
-                                />
-                              );
-                            })}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </Card>
-                  </div>
+                  {/* Wellbeing + Comparatif */}
+                  <Anim delay={4}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                        gap: 12,
+                        marginBottom: 12,
+                      }}
+                    >
+                      <WellbeingCard
+                        score={wellbeingScore}
+                        habitData={habitData}
+                        habitudes={habitudes}
+                        moodData={moodData}
+                        sommeilData={sommeilData}
+                        sportData={sportData}
+                      />
+                      <ComparatifSemaine
+                        habitudes={habitudes}
+                        habitData={habitData}
+                        taches={taches}
+                        sportData={sportData}
+                        moodData={moodData}
+                        sommeilData={sommeilData}
+                      />
+                    </div>
+                  </Anim>
 
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                      gap: 12,
-                      marginBottom: 12,
-                    }}
-                  >
-                    {/* Livres lus par mois */}
-                    <Card>
-                      <SecTitle>Livres lus cette année</SecTitle>
-                      {livres.filter(function (l) {
-                        return l.statut === "Terminé";
-                      }).length === 0 ? (
-                        <p style={{ color: C.textSec, fontSize: 13 }}>
-                          Ajoute tes livres dans l'onglet Lecture
-                        </p>
-                      ) : (
+                  {/* Habitudes charts */}
+                  <Anim delay={5}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                        gap: 12,
+                        marginBottom: 12,
+                      }}
+                    >
+                      <Card>
+                        <SecTitle>Habitudes cette semaine</SecTitle>
                         <ResponsiveContainer width="100%" height={140}>
                           <BarChart
-                            data={livresChartData}
-                            barSize={16}
+                            data={weekHabitData}
+                            barSize={18}
                             margin={{ top: 4, right: 4, left: -28, bottom: 0 }}
                           >
                             <XAxis
-                              dataKey="mois"
-                              tick={{ fontSize: 9, fill: C.textSec }}
+                              dataKey="jour"
+                              tick={{ fontSize: 10, fill: C.textSec }}
                               axisLine={false}
                               tickLine={false}
                             />
@@ -2728,13 +4942,13 @@ export default function App() {
                               tick={{ fontSize: 9, fill: C.textSec }}
                               axisLine={false}
                               tickLine={false}
-                              allowDecimals={false}
+                              domain={[0, habitudes.length || 1]}
                             />
                             <Tooltip
-                              formatter={function (v) {
+                              formatter={function (v, n, p) {
                                 return [
-                                  v + " livre" + (v > 1 ? "s" : ""),
-                                  "Terminés",
+                                  v + "/" + p.payload.total + " habitudes",
+                                  "Realisees",
                                 ];
                               }}
                               contentStyle={{
@@ -2748,445 +4962,480 @@ export default function App() {
                               }}
                               cursor={{ fill: "rgba(128,128,128,.08)" }}
                             />
-                            <Bar
-                              dataKey="livres"
-                              radius={[4, 4, 0, 0]}
-                              fill={C.green}
-                              fillOpacity={0.8}
-                            />
+                            <Bar dataKey="done" radius={[4, 4, 0, 0]}>
+                              {weekHabitData.map(function (d, i) {
+                                return (
+                                  <Cell
+                                    key={i}
+                                    fill={
+                                      d.isToday
+                                        ? C.beige
+                                        : d.done === habitudes.length &&
+                                          habitudes.length > 0
+                                        ? C.green
+                                        : C.blue
+                                    }
+                                    fillOpacity={0.8}
+                                  />
+                                );
+                              })}
+                            </Bar>
                           </BarChart>
                         </ResponsiveContainer>
-                      )}
-                    </Card>
-
-                    {/* Tâches par priorité */}
-                    <Card style={{ display: "flex", flexDirection: "column" }}>
-                      <SecTitle>Tâches par priorité</SecTitle>
-                      {donutData.length === 0 ? (
-                        <p style={{ color: C.textSec, fontSize: 13 }}>
-                          Aucune tâche
-                        </p>
-                      ) : (
-                        <div>
-                          <ResponsiveContainer width="100%" height={110}>
-                            <PieChart>
-                              <Pie
-                                data={donutData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={30}
-                                outerRadius={50}
-                                paddingAngle={3}
-                                dataKey="value"
-                              >
-                                {donutData.map(function (d, i) {
-                                  return <Cell key={i} fill={d.color} />;
-                                })}
-                              </Pie>
-                              <Tooltip
-                                contentStyle={{
-                                  background: C.cardBg,
-                                  border:
-                                    "1px solid " +
-                                    (C === DARK ? "#444" : "#E2DDD7"),
-                                  borderRadius: 8,
-                                  fontSize: 11,
-                                  color: C.text,
-                                }}
-                              />
-                            </PieChart>
-                          </ResponsiveContainer>
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 4,
-                              marginTop: 4,
-                            }}
-                          >
-                            {donutData.map(function (d) {
-                              return (
-                                <div
-                                  key={d.name}
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 8,
-                                  }}
+                      </Card>
+                      <Card
+                        style={{ display: "flex", flexDirection: "column" }}
+                      >
+                        <SecTitle>Taches par priorite</SecTitle>
+                        {donutData.length === 0 ? (
+                          <p style={{ color: C.textSec, fontSize: 13 }}>
+                            Aucune tache
+                          </p>
+                        ) : (
+                          <div>
+                            <ResponsiveContainer width="100%" height={110}>
+                              <PieChart>
+                                <Pie
+                                  data={donutData}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={30}
+                                  outerRadius={50}
+                                  paddingAngle={3}
+                                  dataKey="value"
                                 >
-                                  <div
-                                    style={{
-                                      width: 7,
-                                      height: 7,
-                                      borderRadius: "50%",
-                                      background: d.color,
-                                      flexShrink: 0,
-                                    }}
-                                  />
-                                  <span
-                                    style={{
-                                      fontSize: 11,
-                                      color: C.textSec,
-                                      flex: 1,
-                                    }}
-                                  >
-                                    {d.name}
-                                  </span>
-                                  <span
-                                    style={{
-                                      fontSize: 11,
-                                      fontWeight: 600,
-                                      color: C.text,
-                                    }}
-                                  >
-                                    {d.value}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </Card>
-                  </div>
-
-                  {/* Récap semaine */}
-                  <Card style={{ marginBottom: 14 }}>
-                    <SecTitle>Récap du jour</SecTitle>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: isMobile
-                          ? "1fr 1fr"
-                          : "repeat(4,1fr)",
-                        gap: 12,
-                        marginBottom: 16,
-                      }}
-                    >
-                      {[
-                        {
-                          label: "Habitudes aujourd'hui",
-                          val: habitWeekDone + "/" + habitudes.length,
-                          pct:
-                            habitudes.length > 0
-                              ? (habitWeekDone / habitudes.length) * 100
-                              : 0,
-                          color: C.green,
-                        },
-                        {
-                          label: "Meilleur streak",
-                          val:
-                            bestStreak > 0
-                              ? bestStreak +
-                                "j " +
-                                (bestStreak >= 7
-                                  ? "🔥"
-                                  : bestStreak >= 3
-                                  ? "⚡"
-                                  : "✓")
-                              : "—",
-                          pct: Math.min(100, (bestStreak / 30) * 100),
-                          color: C.beige,
-                        },
-                        {
-                          label: "Humeur du jour",
-                          val: todayMood
-                            ? MOOD_LABELS[todayMood - 1] +
-                              " " +
-                              todayMood +
-                              "/5"
-                            : "—",
-                          pct: todayMood ? (todayMood / 5) * 100 : 0,
-                          color: MOOD_COLORS[todayMood ? todayMood - 1 : 2],
-                        },
-                        {
-                          label: "Score objectifs",
-                          val:
-                            objectifs.length > 0
-                              ? Math.round(
-                                  objectifs.reduce(function (s, o) {
-                                    return s + (o.score || 0);
-                                  }, 0) / objectifs.length
-                                ) + "%"
-                              : "—",
-                          pct:
-                            objectifs.length > 0
-                              ? objectifs.reduce(function (s, o) {
-                                  return s + (o.score || 0);
-                                }, 0) / objectifs.length
-                              : 0,
-                          color: C.blue,
-                        },
-                      ].map(function (k, i) {
-                        return (
-                          <div
-                            key={i}
-                            style={{
-                              background: C.tableBg,
-                              borderRadius: 10,
-                              padding: "12px 14px",
-                            }}
-                          >
+                                  {donutData.map(function (d, i) {
+                                    return <Cell key={i} fill={d.color} />;
+                                  })}
+                                </Pie>
+                                <Tooltip
+                                  contentStyle={{
+                                    background: C.cardBg,
+                                    border:
+                                      "1px solid " +
+                                      (C === DARK ? "#444" : "#E2DDD7"),
+                                    borderRadius: 8,
+                                    fontSize: 11,
+                                    color: C.text,
+                                  }}
+                                />
+                              </PieChart>
+                            </ResponsiveContainer>
                             <div
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                letterSpacing: "0.1em",
-                                textTransform: "uppercase",
-                                color: C.textSec,
-                                marginBottom: 6,
-                              }}
-                            >
-                              {k.label}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 18,
-                                fontWeight: 700,
-                                color: k.color,
-                                marginBottom: 6,
-                              }}
-                            >
-                              {k.val}
-                            </div>
-                            <PBar pct={k.pct} color={k.color} h={4} />
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Mood */}
-                    <div style={{ marginBottom: 14 }}>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          letterSpacing: "0.1em",
-                          textTransform: "uppercase",
-                          color: C.textSec,
-                          marginBottom: 8,
-                        }}
-                      >
-                        Humeur du jour
-                      </div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        {MOOD_LABELS.map(function (m, i) {
-                          return (
-                            <button
-                              key={i}
-                              onClick={function () {
-                                setMoodData(function (d) {
-                                  var nd = Object.assign({}, d);
-                                  nd[todayKey] = i + 1;
-                                  return nd;
-                                });
-                              }}
-                              style={{
-                                flex: 1,
-                                padding: "10px 4px",
-                                fontSize: 22,
-                                borderRadius: 10,
-                                border:
-                                  "2px solid " +
-                                  (todayMood === i + 1
-                                    ? MOOD_COLORS[i]
-                                    : "transparent"),
-                                background:
-                                  todayMood === i + 1
-                                    ? C.tableBg
-                                    : "transparent",
-                                cursor: "pointer",
-                                transition: "all .2s",
-                              }}
-                            >
-                              {m}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Habitudes */}
-                    <div style={{ marginBottom: 14 }}>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          letterSpacing: "0.1em",
-                          textTransform: "uppercase",
-                          color: C.textSec,
-                          marginBottom: 8,
-                        }}
-                      >
-                        Habitudes d'aujourd'hui
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 6,
-                        }}
-                      >
-                        {habitudes.map(function (h) {
-                          var checked = todayData[h.id] || false;
-                          var streak = getStreak(h.id);
-                          return (
-                            <div
-                              key={h.id}
-                              onClick={function () {
-                                toggleHabit(h.id, todayKey);
-                              }}
                               style={{
                                 display: "flex",
-                                alignItems: "center",
-                                gap: 10,
-                                padding: "8px 12px",
-                                background: checked
-                                  ? C === DARK
-                                    ? "#1E2A1E"
-                                    : "#EBF2EC"
-                                  : C.tableBg,
-                                borderRadius: 8,
-                                cursor: "pointer",
-                                border:
-                                  "1px solid " +
-                                  (checked ? C.green : "transparent"),
-                                transition: "all .2s",
+                                flexDirection: "column",
+                                gap: 4,
+                                marginTop: 4,
+                              }}
+                            >
+                              {donutData.map(function (d) {
+                                return (
+                                  <div
+                                    key={d.name}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 8,
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        width: 7,
+                                        height: 7,
+                                        borderRadius: "50%",
+                                        background: d.color,
+                                        flexShrink: 0,
+                                      }}
+                                    />
+                                    <span
+                                      style={{
+                                        fontSize: 11,
+                                        color: C.textSec,
+                                        flex: 1,
+                                      }}
+                                    >
+                                      {d.name}
+                                    </span>
+                                    <span
+                                      style={{
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        color: C.text,
+                                      }}
+                                    >
+                                      {d.value}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </Card>
+                    </div>
+                  </Anim>
+
+                  {/* Recap du jour */}
+                  <Anim delay={6}>
+                    <Card style={{ marginBottom: 14 }}>
+                      <SecTitle>Recap du jour</SecTitle>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: isMobile
+                            ? "1fr 1fr"
+                            : "repeat(4,1fr)",
+                          gap: 12,
+                          marginBottom: 16,
+                        }}
+                      >
+                        {[
+                          {
+                            label: "Habitudes aujourd'hui",
+                            val: habitWeekDone + "/" + habitudes.length,
+                            pct:
+                              habitudes.length > 0
+                                ? (habitWeekDone / habitudes.length) * 100
+                                : 0,
+                            color: C.green,
+                          },
+                          {
+                            label: "Meilleur streak",
+                            val: bestStreak > 0 ? bestStreak + "j" : "--",
+                            pct: Math.min(100, (bestStreak / 30) * 100),
+                            color: C.beige,
+                          },
+                          {
+                            label: "Humeur du jour",
+                            val: todayMood
+                              ? MOOD_EMOJIS[todayMood - 1] +
+                                " " +
+                                todayMood +
+                                "/5"
+                              : "--",
+                            pct: todayMood ? (todayMood / 5) * 100 : 0,
+                            color: MOOD_COLORS[todayMood ? todayMood - 1 : 2],
+                          },
+                          {
+                            label: "Score objectifs",
+                            val:
+                              objectifs.length > 0
+                                ? Math.round(
+                                    objectifs.reduce(function (s, o) {
+                                      return s + (o.score || 0);
+                                    }, 0) / objectifs.length
+                                  ) + "%"
+                                : "--",
+                            pct:
+                              objectifs.length > 0
+                                ? objectifs.reduce(function (s, o) {
+                                    return s + (o.score || 0);
+                                  }, 0) / objectifs.length
+                                : 0,
+                            color: C.blue,
+                          },
+                        ].map(function (k, i) {
+                          return (
+                            <div
+                              key={i}
+                              style={{
+                                background: C.tableBg,
+                                borderRadius: 10,
+                                padding: "12px 14px",
                               }}
                             >
                               <div
                                 style={{
-                                  width: 20,
-                                  height: 20,
-                                  borderRadius: 5,
-                                  border:
-                                    "1.5px solid " +
-                                    (checked ? C.green : C.gray),
-                                  background: checked ? C.green : "transparent",
-                                  flexShrink: 0,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  transition: "all .2s",
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  letterSpacing: "0.1em",
+                                  textTransform: "uppercase",
+                                  color: C.textSec,
+                                  marginBottom: 6,
                                 }}
                               >
-                                {checked && (
-                                  <span style={{ color: "#fff", fontSize: 11 }}>
-                                    ✓
-                                  </span>
-                                )}
+                                {k.label}
                               </div>
-                              <span
+                              <div
                                 style={{
-                                  fontSize: 13,
-                                  color: checked ? C.green : C.text,
-                                  textDecoration: checked
-                                    ? "line-through"
-                                    : "none",
-                                  flex: 1,
+                                  fontSize: 18,
+                                  fontWeight: 700,
+                                  color: k.color,
+                                  marginBottom: 6,
                                 }}
                               >
-                                {h.nom}
-                              </span>
-                              {streak > 0 && (
-                                <span
-                                  style={{
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    color: streak >= 7 ? C.beige : C.textSec,
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  {streak >= 7 ? "🔥" : streak >= 3 ? "⚡" : ""}{" "}
-                                  {streak}j
-                                </span>
-                              )}
+                                {k.val}
+                              </div>
+                              <APBar
+                                pct={k.pct}
+                                color={k.color}
+                                h={4}
+                                delay={i * 100}
+                              />
                             </div>
                           );
                         })}
                       </div>
-                    </div>
-
-                    {/* Gratitude */}
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          letterSpacing: "0.1em",
-                          textTransform: "uppercase",
-                          color: C.textSec,
-                          marginBottom: 8,
-                        }}
-                      >
-                        3 choses positives aujourd'hui 🙏
-                      </div>
-                      {["g1", "g2", "g3"].map(function (k, i) {
-                        return (
-                          <input
-                            key={k}
-                            placeholder={"Gratitude " + (i + 1) + "..."}
-                            value={todayGratitude[k] || ""}
-                            onChange={function (e) {
-                              setGratitudeData(function (d) {
-                                var nd = Object.assign({}, d);
-                                nd[todayKey] = Object.assign(
-                                  {},
-                                  d[todayKey] || {}
-                                );
-                                nd[todayKey][k] = e.target.value;
-                                return nd;
-                              });
-                            }}
-                            style={Object.assign({}, inpStyle, {
-                              width: "100%",
-                              marginBottom: 6,
-                              boxSizing: "border-box",
-                            })}
-                          />
-                        );
-                      })}
-                    </div>
-                  </Card>
-
-                  {/* Objectifs par horizon */}
-                  <Card style={{ marginBottom: 14 }}>
-                    <SecTitle>Objectifs par horizon</SecTitle>
-                    {["court", "moyen", "long"].map(function (terme) {
-                      var label =
-                        terme === "court"
-                          ? "Court terme"
-                          : terme === "moyen"
-                          ? "Moyen terme"
-                          : "Long terme";
-                      var color =
-                        terme === "court"
-                          ? C.green
-                          : terme === "moyen"
-                          ? C.beige
-                          : C.blue;
-                      var objs = objectifs.filter(function (o) {
-                        return (o.terme || "moyen") === terme;
-                      });
-                      if (objs.length === 0) return null;
-                      return (
-                        <div key={terme} style={{ marginBottom: 14 }}>
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: color,
-                              fontWeight: 700,
-                              marginBottom: 8,
-                            }}
-                          >
-                            {label}
-                          </div>
-                          {objs.map(function (o) {
-                            var dom = domaines.find(function (d) {
-                              return d.id === o.domaineId;
-                            });
+                      <div style={{ marginBottom: 14 }}>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                            color: C.textSec,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Humeur du jour
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          {MOOD_EMOJIS.map(function (m, i) {
                             return (
-                              <div key={o.id} style={{ marginBottom: 10 }}>
+                              <button
+                                key={i}
+                                onClick={function () {
+                                  setMoodData(function (d) {
+                                    var nd = Object.assign({}, d);
+                                    nd[todayKey] = i + 1;
+                                    return nd;
+                                  });
+                                }}
+                                style={{
+                                  flex: 1,
+                                  padding: "10px 4px",
+                                  fontSize: 18,
+                                  borderRadius: 10,
+                                  border:
+                                    "2px solid " +
+                                    (todayMood === i + 1
+                                      ? MOOD_COLORS[i]
+                                      : "transparent"),
+                                  background:
+                                    todayMood === i + 1
+                                      ? C.tableBg
+                                      : "transparent",
+                                  cursor: "pointer",
+                                  transition: "all .2s",
+                                }}
+                              >
+                                {m}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div style={{ marginBottom: 14 }}>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                            color: C.textSec,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Habitudes d'aujourd'hui
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 6,
+                          }}
+                        >
+                          {habitudes.map(function (h) {
+                            var checked = todayData[h.id] || false;
+                            var streak = getStreak(h.id);
+                            return (
+                              <div
+                                key={h.id}
+                                onClick={function () {
+                                  toggleHabit(h.id, todayKey);
+                                }}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 10,
+                                  padding: "8px 12px",
+                                  background: checked
+                                    ? C === DARK
+                                      ? "#1E2A1E"
+                                      : "#EBF2EC"
+                                    : C.tableBg,
+                                  borderRadius: 8,
+                                  cursor: "pointer",
+                                  border:
+                                    "1px solid " +
+                                    (checked ? C.green : "transparent"),
+                                  transition: "all .2s",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: 20,
+                                    height: 20,
+                                    borderRadius: 5,
+                                    border:
+                                      "1.5px solid " +
+                                      (checked ? C.green : C.gray),
+                                    background: checked
+                                      ? C.green
+                                      : "transparent",
+                                    flexShrink: 0,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    transition: "all .2s",
+                                  }}
+                                >
+                                  {checked && (
+                                    <span
+                                      style={{ color: "#fff", fontSize: 11 }}
+                                    >
+                                      v
+                                    </span>
+                                  )}
+                                </div>
+                                <span
+                                  style={{
+                                    fontSize: 13,
+                                    color: checked ? C.green : C.text,
+                                    textDecoration: checked
+                                      ? "line-through"
+                                      : "none",
+                                    flex: 1,
+                                  }}
+                                >
+                                  {h.nom}
+                                </span>
+                                {streak > 0 && (
+                                  <span
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                      color: streak >= 7 ? C.beige : C.textSec,
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    {streak >= 7 ? "!" : streak >= 3 ? "^" : ""}{" "}
+                                    {streak}j
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                            color: C.textSec,
+                            marginBottom: 8,
+                          }}
+                        >
+                          3 choses positives aujourd'hui
+                        </div>
+                        {["g1", "g2", "g3"].map(function (k, i) {
+                          return (
+                            <input
+                              key={k}
+                              placeholder={"Gratitude " + (i + 1) + "..."}
+                              value={todayGratitude[k] || ""}
+                              onChange={function (e) {
+                                setGratitudeData(function (d) {
+                                  var nd = Object.assign({}, d);
+                                  nd[todayKey] = Object.assign(
+                                    {},
+                                    d[todayKey] || {}
+                                  );
+                                  nd[todayKey][k] = e.target.value;
+                                  return nd;
+                                });
+                              }}
+                              style={Object.assign({}, inp, {
+                                width: "100%",
+                                marginBottom: 6,
+                                boxSizing: "border-box",
+                              })}
+                            />
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  </Anim>
+
+                  <Anim delay={7}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                        gap: 12,
+                      }}
+                    >
+                      <Card>
+                        <SecTitle>Taches urgentes</SecTitle>
+                        {taches.filter(function (t) {
+                          return (
+                            t.priorite === "Urgent" && t.statut !== "Termine"
+                          );
+                        }).length === 0 ? (
+                          <p style={{ color: C.textSec, fontSize: 13 }}>
+                            Aucune tache urgente
+                          </p>
+                        ) : (
+                          taches
+                            .filter(function (t) {
+                              return (
+                                t.priorite === "Urgent" &&
+                                t.statut !== "Termine"
+                              );
+                            })
+                            .slice(0, 3)
+                            .map(function (t) {
+                              return (
+                                <div
+                                  key={t.id}
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    padding: "8px 0",
+                                    borderBottom: "1px solid " + C.tableBg,
+                                  }}
+                                >
+                                  <span style={{ fontSize: 13, color: C.text }}>
+                                    {t.nom}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: 11,
+                                      color: C.textSec,
+                                      flexShrink: 0,
+                                      marginLeft: 8,
+                                    }}
+                                  >
+                                    {t.echeance}
+                                  </span>
+                                </div>
+                              );
+                            })
+                        )}
+                      </Card>
+                      <Card>
+                        <SecTitle>Projets en cours</SecTitle>
+                        {projets
+                          .filter(function (p) {
+                            return p.statut !== "Termine";
+                          })
+                          .map(function (p) {
+                            return (
+                              <div key={p.id} style={{ marginBottom: 10 }}>
                                 <div
                                   style={{
                                     display: "flex",
@@ -3195,131 +5444,33 @@ export default function App() {
                                     marginBottom: 4,
                                   }}
                                 >
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 6,
-                                    }}
-                                  >
-                                    {dom && (
-                                      <div
-                                        style={{
-                                          width: 6,
-                                          height: 6,
-                                          borderRadius: "50%",
-                                          background: dom.color,
-                                        }}
-                                      />
-                                    )}
-                                    <span style={{ color: C.text }}>
-                                      {o.obj}
-                                    </span>
-                                  </div>
-                                  <span
-                                    style={{
-                                      color: C.textSec,
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    {o.score || 0}%
+                                  <span style={{ color: C.text }}>{p.nom}</span>
+                                  <span style={{ color: C.textSec }}>
+                                    {p.prog}%
                                   </span>
                                 </div>
-                                <PBar pct={o.score || 0} color={color} h={4} />
+                                <APBar pct={p.prog} color={C.beige} />
                               </div>
                             );
                           })}
-                        </div>
-                      );
-                    })}
-                  </Card>
-
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                      gap: 12,
-                    }}
-                  >
-                    <Card>
-                      <SecTitle>Tâches urgentes</SecTitle>
-                      {taches.filter(function (t) {
-                        return (
-                          t.priorite === "Urgent" && t.statut !== "Terminé"
-                        );
-                      }).length === 0 ? (
-                        <p style={{ color: C.textSec, fontSize: 13 }}>
-                          Aucune tâche urgente
-                        </p>
-                      ) : (
-                        taches
-                          .filter(function (t) {
-                            return (
-                              t.priorite === "Urgent" && t.statut !== "Terminé"
-                            );
-                          })
-                          .slice(0, 3)
-                          .map(function (t) {
-                            return (
-                              <div
-                                key={t.id}
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  padding: "8px 0",
-                                  borderBottom: "1px solid " + C.tableBg,
-                                }}
-                              >
-                                <span style={{ fontSize: 13, color: C.text }}>
-                                  {t.nom}
-                                </span>
-                                <span
-                                  style={{
-                                    fontSize: 11,
-                                    color: C.textSec,
-                                    flexShrink: 0,
-                                    marginLeft: 8,
-                                  }}
-                                >
-                                  {t.echeance}
-                                </span>
-                              </div>
-                            );
-                          })
-                      )}
-                    </Card>
-                    <Card>
-                      <SecTitle>Projets en cours</SecTitle>
-                      {projets
-                        .filter(function (p) {
-                          return p.statut !== "Terminé";
-                        })
-                        .map(function (p) {
-                          return (
-                            <div key={p.id} style={{ marginBottom: 10 }}>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  fontSize: 13,
-                                  marginBottom: 4,
-                                }}
-                              >
-                                <span style={{ color: C.text }}>{p.nom}</span>
-                                <span style={{ color: C.textSec }}>
-                                  {p.prog}%
-                                </span>
-                              </div>
-                              <PBar pct={p.prog} color={C.beige} />
-                            </div>
-                          );
-                        })}
-                    </Card>
-                  </div>
+                      </Card>
+                    </div>
+                  </Anim>
                 </div>
               )}
 
-              {/* ── TO DO ── */}
+              {tab === "notes" && (
+                <NotesTab notes={notes} setNotes={setNotes} />
+              )}
+              {tab === "routines" && (
+                <RoutineTab
+                  routines={routines}
+                  setRoutines={setRoutines}
+                  routineLog={routineLog}
+                  setRoutineLog={setRoutineLog}
+                />
+              )}
+
               {tab === "todo" && (
                 <div>
                   <div
@@ -3342,12 +5493,12 @@ export default function App() {
                     </h2>
                     <Btn
                       onClick={function () {
-                        open("tache", {
+                        openModal("tache", {
                           nom: "",
                           priorite: "Moyen",
                           categorie: "Personnel",
                           echeance: "",
-                          statut: "Pas commencé",
+                          statut: "Pas commence",
                         });
                       }}
                     >
@@ -3364,7 +5515,7 @@ export default function App() {
                   >
                     {[
                       { l: "Total", v: taches.length },
-                      { l: "Terminées", v: terminees },
+                      { l: "Terminees", v: terminees },
                       { l: "En retard", v: enRetard },
                       {
                         l: "En cours",
@@ -3407,7 +5558,7 @@ export default function App() {
                   >
                     {taches.map(function (t) {
                       var late =
-                        t.statut !== "Terminé" &&
+                        t.statut !== "Termine" &&
                         t.echeance &&
                         new Date(t.echeance) < today;
                       return (
@@ -3439,9 +5590,9 @@ export default function App() {
                               borderRadius: 5,
                               border:
                                 "1.5px solid " +
-                                (t.statut === "Terminé" ? C.green : C.gray),
+                                (t.statut === "Termine" ? C.green : C.gray),
                               background:
-                                t.statut === "Terminé"
+                                t.statut === "Termine"
                                   ? C.green
                                   : "transparent",
                               cursor: "pointer",
@@ -3452,9 +5603,9 @@ export default function App() {
                               minWidth: 22,
                             }}
                           >
-                            {t.statut === "Terminé" && (
+                            {t.statut === "Termine" && (
                               <span style={{ color: "#fff", fontSize: 12 }}>
-                                ✓
+                                v
                               </span>
                             )}
                           </button>
@@ -3464,9 +5615,9 @@ export default function App() {
                                 fontSize: 13,
                                 fontWeight: 500,
                                 color:
-                                  t.statut === "Terminé" ? C.textSec : C.text,
+                                  t.statut === "Termine" ? C.textSec : C.text,
                                 textDecoration:
-                                  t.statut === "Terminé"
+                                  t.statut === "Termine"
                                     ? "line-through"
                                     : "none",
                                 overflow: "hidden",
@@ -3484,7 +5635,7 @@ export default function App() {
                               }}
                             >
                               {t.categorie}
-                              {t.echeance ? " · " + t.echeance : ""}
+                              {t.echeance ? " - " + t.echeance : ""}
                             </div>
                           </div>
                           <div
@@ -3498,12 +5649,17 @@ export default function App() {
                             {!isMobile && (
                               <Tag
                                 label={t.priorite}
-                                s={PRIORITE_STYLE[t.priorite]}
+                                s={
+                                  PRIORITE_STYLE[t.priorite] || {
+                                    bg: C.tableBg,
+                                    color: C.textSec,
+                                  }
+                                }
                               />
                             )}
                             <Edit
                               onClick={function () {
-                                open("tache", Object.assign({}, t));
+                                openModal("tache", Object.assign({}, t));
                               }}
                             />
                             <Del
@@ -3519,7 +5675,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── HABITUDES ── */}
               {tab === "habitudes" && (
                 <div>
                   <div
@@ -3542,7 +5697,7 @@ export default function App() {
                     </h2>
                     <Btn
                       onClick={function () {
-                        open("habitude", { nom: "", obj: 30 });
+                        openModal("habitude", { nom: "", obj: 30 });
                       }}
                     >
                       + Ajouter
@@ -3558,7 +5713,7 @@ export default function App() {
                       }}
                     >
                       <SecTitle>
-                        Aujourd'hui —{" "}
+                        Aujourd'hui -{" "}
                         {today.toLocaleDateString("fr-FR", {
                           day: "numeric",
                           month: "long",
@@ -3626,7 +5781,7 @@ export default function App() {
                             >
                               {checked && (
                                 <span style={{ color: "#fff", fontSize: 12 }}>
-                                  ✓
+                                  v
                                 </span>
                               )}
                             </div>
@@ -3651,7 +5806,7 @@ export default function App() {
                                   flexShrink: 0,
                                 }}
                               >
-                                {streak >= 7 ? "🔥" : streak >= 3 ? "⚡" : ""}{" "}
+                                {streak >= 7 ? "!" : streak >= 3 ? "^" : ""}{" "}
                                 {streak}j
                               </span>
                             )}
@@ -3693,7 +5848,7 @@ export default function App() {
                   </div>
                   <div style={Object.assign({}, g2, { marginBottom: 14 })}>
                     {[
-                      { l: "Réalisées", v: totalReal, c: C.blue },
+                      { l: "Realisees", v: totalReal, c: C.blue },
                       {
                         l: "Taux du mois",
                         v: tauxHabit + "%",
@@ -3775,17 +5930,12 @@ export default function App() {
                                       color: streak >= 7 ? C.beige : C.textSec,
                                     }}
                                   >
-                                    {streak >= 7
-                                      ? "🔥"
-                                      : streak >= 3
-                                      ? "⚡"
-                                      : ""}
                                     {streak}j
                                   </span>
                                 )}
                                 <Edit
                                   onClick={function () {
-                                    open("habitude", Object.assign({}, h));
+                                    openModal("habitude", Object.assign({}, h));
                                   }}
                                 />
                                 <Del
@@ -3819,23 +5969,18 @@ export default function App() {
                                     return nd;
                                   });
                                 }}
-                                style={{
-                                  background: C.tableBg,
-                                  border: "1px solid #D5D0CA",
-                                  borderRadius: 8,
-                                  padding: "5px 8px",
-                                  fontSize: 14,
-                                  color: C.text,
-                                  outline: "none",
+                                style={Object.assign({}, inp, {
                                   width: 52,
                                   textAlign: "center",
-                                }}
+                                  padding: "5px 8px",
+                                  fontSize: 14,
+                                })}
                               />
                               <span style={{ fontSize: 11, color: C.textSec }}>
                                 / {h.obj}
                               </span>
                               <div style={{ flex: 1 }}>
-                                <PBar
+                                <APBar
                                   pct={taux}
                                   color={
                                     taux >= 80
@@ -3886,7 +6031,7 @@ export default function App() {
                               "Habitude",
                               "Streak",
                               "Obj.",
-                              "Réalisé",
+                              "Realise",
                               "Taux",
                               "Progression",
                               "",
@@ -3947,15 +6092,10 @@ export default function App() {
                                         fontWeight: 700,
                                       }}
                                     >
-                                      {streak >= 7
-                                        ? "🔥"
-                                        : streak >= 3
-                                        ? "⚡"
-                                        : ""}{" "}
                                       {streak}j
                                     </span>
                                   ) : (
-                                    <span style={{ color: C.textSec }}>—</span>
+                                    <span style={{ color: C.textSec }}>-</span>
                                   )}
                                 </td>
                                 <td
@@ -3997,17 +6137,11 @@ export default function App() {
                                         return nd;
                                       });
                                     }}
-                                    style={{
-                                      background: C.tableBg,
-                                      border: "1px solid #D5D0CA",
-                                      borderRadius: 8,
-                                      padding: "5px 8px",
-                                      fontSize: 13,
-                                      color: C.text,
-                                      outline: "none",
+                                    style={Object.assign({}, inp, {
                                       width: 56,
                                       textAlign: "center",
-                                    }}
+                                      padding: "5px 8px",
+                                    })}
                                   />
                                 </td>
                                 <td
@@ -4029,7 +6163,7 @@ export default function App() {
                                 <td
                                   style={{ padding: "11px 14px", width: 120 }}
                                 >
-                                  <PBar
+                                  <APBar
                                     pct={taux}
                                     color={
                                       taux >= 80
@@ -4049,7 +6183,10 @@ export default function App() {
                                 >
                                   <Edit
                                     onClick={function () {
-                                      open("habitude", Object.assign({}, h));
+                                      openModal(
+                                        "habitude",
+                                        Object.assign({}, h)
+                                      );
                                     }}
                                   />
                                   <Del
@@ -4066,7 +6203,7 @@ export default function App() {
                     </div>
                   )}
                   <Card style={{ marginTop: 14 }}>
-                    <SecTitle>Taux de complétion — vue annuelle</SecTitle>
+                    <SecTitle>Taux - vue annuelle</SecTitle>
                     <div
                       style={{
                         display: "flex",
@@ -4080,12 +6217,12 @@ export default function App() {
                         var real = habitudes.reduce(function (s, h) {
                           return s + (d[h.id] || 0);
                         }, 0);
-                        var obj = habitudes.reduce(function (s, h) {
+                        var obj2 = habitudes.reduce(function (s, h) {
                           return s + h.obj;
                         }, 0);
                         var pct =
-                          obj > 0
-                            ? Math.min(100, Math.round((real / obj) * 100))
+                          obj2 > 0
+                            ? Math.min(100, Math.round((real / obj2) * 100))
                             : 0;
                         return (
                           <div
@@ -4123,7 +6260,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── BUDGET ── */}
               {tab === "budget" && (
                 <div>
                   <h2
@@ -4138,15 +6274,15 @@ export default function App() {
                   </h2>
                   <div style={Object.assign({}, g2, { marginBottom: 14 })}>
                     {[
-                      { l: "Revenus réels", v: fmt(revReel), c: C.green },
-                      { l: "Dépenses réelles", v: fmt(depReel), c: C.red },
+                      { l: "Revenus reels", v: fmt(revReel), c: C.green },
+                      { l: "Depenses reelles", v: fmt(depReel), c: C.red },
                       {
                         l: "Solde net",
                         v: fmt(solde),
                         c: solde >= 0 ? C.green : C.red,
                       },
                       {
-                        l: "Revenus prévus",
+                        l: "Revenus prevus",
                         v: fmt(
                           budget.revenus.reduce(function (s, r) {
                             return s + (+r.prevu || 0);
@@ -4184,7 +6320,7 @@ export default function App() {
                   </div>
                   {totalDep > 0 ? (
                     <Card style={{ marginBottom: 14 }}>
-                      <SecTitle>Répartition des dépenses</SecTitle>
+                      <SecTitle>Repartition des depenses</SecTitle>
                       <div
                         style={{
                           display: "flex",
@@ -4280,7 +6416,7 @@ export default function App() {
                                     </span>
                                   </div>
                                 </div>
-                                <PBar
+                                <APBar
                                   pct={
                                     totalDep > 0
                                       ? (d.value / totalDep) * 100
@@ -4297,16 +6433,16 @@ export default function App() {
                     </Card>
                   ) : (
                     <Card style={{ marginBottom: 14 }}>
-                      <SecTitle>Répartition des dépenses</SecTitle>
+                      <SecTitle>Repartition</SecTitle>
                       <p style={{ color: C.textSec, fontSize: 13 }}>
-                        Saisis tes dépenses réelles pour voir le graphique
+                        Saisis tes depenses reelles pour voir le graphique
                       </p>
                     </Card>
                   )}
                   {[
                     { title: "Revenus", key: "revenus" },
-                    { title: "Dépenses fixes", key: "fixes" },
-                    { title: "Dépenses variables", key: "variables" },
+                    { title: "Depenses fixes", key: "fixes" },
+                    { title: "Depenses variables", key: "variables" },
                   ].map(function (sec) {
                     return (
                       <div
@@ -4342,7 +6478,7 @@ export default function App() {
                           </span>
                           <Btn
                             onClick={function () {
-                              open("budget_" + sec.key, {
+                              openModal("budget_" + sec.key, {
                                 cat: "",
                                 prevu: 0,
                                 reel: 0,
@@ -4387,17 +6523,11 @@ export default function App() {
                                     return nb;
                                   });
                                 }}
-                                style={{
-                                  background: C.tableBg,
-                                  border: "1px solid #D5D0CA",
-                                  borderRadius: 8,
-                                  padding: "5px 8px",
-                                  fontSize: 12,
-                                  color: C.text,
-                                  outline: "none",
+                                style={Object.assign({}, inp, {
                                   width: isMobile ? 80 : 100,
                                   textAlign: "right",
-                                }}
+                                  padding: "5px 8px",
+                                })}
                               />
                               <span
                                 style={{
@@ -4418,7 +6548,7 @@ export default function App() {
                               </span>
                               <Edit
                                 onClick={function () {
-                                  open(
+                                  openModal(
                                     "budget_" + sec.key,
                                     Object.assign({}, row)
                                   );
@@ -4438,7 +6568,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── VISION ── */}
               {tab === "vision" && (
                 <div>
                   <div
@@ -4463,7 +6592,7 @@ export default function App() {
                       <Btn
                         bg={C.gray}
                         onClick={function () {
-                          open("domaine", {
+                          openModal("domaine", {
                             nom: "",
                             color: DOMAINE_COLORS[0],
                           });
@@ -4474,7 +6603,7 @@ export default function App() {
                       </Btn>
                       <Btn
                         onClick={function () {
-                          open("objectif", {
+                          openModal("objectif", {
                             obj: "",
                             action: "",
                             domaineId: domaines[0] && domaines[0].id,
@@ -4488,8 +6617,6 @@ export default function App() {
                       </Btn>
                     </div>
                   </div>
-
-                  {/* Vision Board */}
                   <Card style={{ marginBottom: 16 }}>
                     <div
                       style={{
@@ -4502,7 +6629,7 @@ export default function App() {
                       <SecTitle>Vision Board</SecTitle>
                       <Btn
                         onClick={function () {
-                          open("vision_card", {
+                          openModal("vision_card", {
                             titre: "",
                             citation: "",
                             color: VISION_COLORS[0],
@@ -4515,8 +6642,7 @@ export default function App() {
                     </div>
                     {visionBoard.length === 0 ? (
                       <p style={{ color: C.textSec, fontSize: 13 }}>
-                        Crée tes cartes de vision — images mentales, citations,
-                        objectifs visuels
+                        Cree tes cartes de vision
                       </p>
                     ) : (
                       <div
@@ -4573,7 +6699,10 @@ export default function App() {
                               >
                                 <button
                                   onClick={function () {
-                                    open("vision_card", Object.assign({}, v));
+                                    openModal(
+                                      "vision_card",
+                                      Object.assign({}, v)
+                                    );
                                   }}
                                   style={{
                                     background: "rgba(255,255,255,.2)",
@@ -4585,7 +6714,7 @@ export default function App() {
                                     fontSize: 12,
                                   }}
                                 >
-                                  ✎
+                                  e
                                 </button>
                                 <button
                                   onClick={function () {
@@ -4601,7 +6730,7 @@ export default function App() {
                                     fontSize: 14,
                                   }}
                                 >
-                                  ×
+                                  x
                                 </button>
                               </div>
                             </div>
@@ -4610,18 +6739,6 @@ export default function App() {
                       </div>
                     )}
                   </Card>
-
-                  <p
-                    style={{
-                      color: C.textSec,
-                      fontSize: 12,
-                      fontStyle: "italic",
-                      marginBottom: 16,
-                    }}
-                  >
-                    « Ce que tu fais chaque jour compte plus que ce que tu fais
-                    de temps en temps. »
-                  </p>
                   {domaines.map(function (d) {
                     var objs = objectifs.filter(function (o) {
                       return o.domaineId === d.id;
@@ -4677,7 +6794,7 @@ export default function App() {
                           <div style={{ display: "flex", gap: 2 }}>
                             <Edit
                               onClick={function () {
-                                open("domaine", Object.assign({}, d));
+                                openModal("domaine", Object.assign({}, d));
                               }}
                             />
                             <Del
@@ -4695,7 +6812,7 @@ export default function App() {
                               color: C.textSec,
                             }}
                           >
-                            Aucun objectif pour ce domaine
+                            Aucun objectif
                           </div>
                         )}
                         {objs.map(function (o, i) {
@@ -4751,7 +6868,7 @@ export default function App() {
                                     </span>
                                   </div>
                                   <div style={{ fontSize: 11, color: C.blue }}>
-                                    → {o.action}
+                                    &rarr; {o.action}
                                   </div>
                                 </div>
                                 <div
@@ -4785,17 +6902,11 @@ export default function App() {
                                         });
                                       });
                                     }}
-                                    style={{
-                                      background: C.tableBg,
-                                      border: "1px solid #D5D0CA",
-                                      borderRadius: 8,
-                                      padding: "4px 6px",
-                                      fontSize: 12,
-                                      color: C.text,
-                                      outline: "none",
+                                    style={Object.assign({}, inp, {
                                       width: 50,
                                       textAlign: "center",
-                                    }}
+                                      padding: "4px 6px",
+                                    })}
                                   />
                                   <span
                                     style={{ fontSize: 11, color: C.textSec }}
@@ -4804,7 +6915,10 @@ export default function App() {
                                   </span>
                                   <Edit
                                     onClick={function () {
-                                      open("objectif", Object.assign({}, o));
+                                      openModal(
+                                        "objectif",
+                                        Object.assign({}, o)
+                                      );
                                     }}
                                   />
                                   <Del
@@ -4815,7 +6929,7 @@ export default function App() {
                                 </div>
                               </div>
                               <div style={{ marginTop: 6 }}>
-                                <PBar
+                                <APBar
                                   pct={o.score || 0}
                                   color={d.color}
                                   h={4}
@@ -4830,7 +6944,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── PROJETS ── */}
               {tab === "projets" && (
                 <div>
                   <div
@@ -4853,12 +6966,12 @@ export default function App() {
                     </h2>
                     <Btn
                       onClick={function () {
-                        open("projet", {
+                        openModal("projet", {
                           nom: "",
                           desc: "",
                           debut: "",
                           fin: "",
-                          statut: "Planifié",
+                          statut: "Planifie",
                           prog: 0,
                         });
                       }}
@@ -4908,21 +7021,17 @@ export default function App() {
                             >
                               <Tag
                                 label={p.statut}
-                                s={{
-                                  bg:
-                                    (STATUT_STYLE[p.statut] &&
-                                      STATUT_STYLE[p.statut].bg) ||
-                                    "#eee",
-                                  border: "transparent",
-                                  color:
-                                    (STATUT_STYLE[p.statut] &&
-                                      STATUT_STYLE[p.statut].color) ||
-                                    "#555",
-                                }}
+                                s={
+                                  STATUT_STYLE[p.statut] || {
+                                    bg: C.tableBg,
+                                    color: C.textSec,
+                                    border: "transparent",
+                                  }
+                                }
                               />
                               <Edit
                                 onClick={function () {
-                                  open("projet", Object.assign({}, p));
+                                  openModal("projet", Object.assign({}, p));
                                 }}
                               />
                               <Del
@@ -4942,7 +7051,7 @@ export default function App() {
                                 marginBottom: 10,
                               }}
                             >
-                              {p.debut && <span>Début : {p.debut}</span>}
+                              {p.debut && <span>Debut : {p.debut}</span>}
                               {p.fin && <span>Fin : {p.fin}</span>}
                             </div>
                           )}
@@ -4954,7 +7063,7 @@ export default function App() {
                             }}
                           >
                             <div style={{ flex: 1 }}>
-                              <PBar pct={p.prog} color={C.beige} h={8} />
+                              <APBar pct={p.prog} color={C.beige} h={8} />
                             </div>
                             <input
                               type="number"
@@ -4978,17 +7087,11 @@ export default function App() {
                                   });
                                 });
                               }}
-                              style={{
-                                background: C.tableBg,
-                                border: "1px solid #D5D0CA",
-                                borderRadius: 8,
-                                padding: "5px 8px",
-                                fontSize: 13,
-                                color: C.text,
-                                outline: "none",
+                              style={Object.assign({}, inp, {
                                 width: 52,
                                 textAlign: "center",
-                              }}
+                                padding: "5px 8px",
+                              })}
                             />
                             <span style={{ fontSize: 12, color: C.textSec }}>
                               %
@@ -5001,7 +7104,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── FOCUS ── */}
               {tab === "focus" && (
                 <div>
                   <h2
@@ -5015,46 +7117,9 @@ export default function App() {
                     Mode Focus
                   </h2>
                   <PomodoroTimer />
-                  <Card style={{ marginTop: 14 }}>
-                    <SecTitle>Conseils pour une session efficace</SecTitle>
-                    {[
-                      "Éteins les notifications de ton téléphone",
-                      "Prépare ta liste de tâches avant de démarrer",
-                      "Fais une vraie pause entre chaque session",
-                      "Bois un verre d'eau avant de commencer",
-                      "Garde ton bureau rangé",
-                    ].map(function (tip, i) {
-                      return (
-                        <div
-                          key={i}
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 10,
-                            padding: "8px 0",
-                            borderBottom: "1px solid " + C.tableBg,
-                          }}
-                        >
-                          <span
-                            style={{
-                              color: C.beige,
-                              fontWeight: 700,
-                              flexShrink: 0,
-                            }}
-                          >
-                            {i + 1}.
-                          </span>
-                          <span style={{ fontSize: 13, color: C.text }}>
-                            {tip}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </Card>
                 </div>
               )}
 
-              {/* ── LECTURE ── */}
               {tab === "lecture" && (
                 <div>
                   <div
@@ -5077,7 +7142,7 @@ export default function App() {
                     </h2>
                     <Btn
                       onClick={function () {
-                        open("livre", {
+                        openModal("livre", {
                           titre: "",
                           auteur: "",
                           statut: "En cours",
@@ -5094,7 +7159,7 @@ export default function App() {
                       {
                         l: "Livres lus",
                         v: livres.filter(function (l) {
-                          return l.statut === "Terminé";
+                          return l.statut === "Termine";
                         }).length,
                         c: C.green,
                       },
@@ -5133,9 +7198,8 @@ export default function App() {
                       );
                     })}
                   </div>
-
                   {livres.filter(function (l) {
-                    return l.statut === "Terminé";
+                    return l.statut === "Termine";
                   }).length > 0 && (
                     <Card style={{ marginBottom: 14 }}>
                       <SecTitle>Livres lus par mois</SecTitle>
@@ -5161,7 +7225,7 @@ export default function App() {
                             formatter={function (v) {
                               return [
                                 v + " livre" + (v > 1 ? "s" : ""),
-                                "Terminés",
+                                "Termines",
                               ];
                             }}
                             contentStyle={{
@@ -5185,7 +7249,6 @@ export default function App() {
                       </ResponsiveContainer>
                     </Card>
                   )}
-
                   {livres.length === 0 ? (
                     <Card>
                       <p
@@ -5195,7 +7258,7 @@ export default function App() {
                           textAlign: "center",
                         }}
                       >
-                        Aucun livre ajouté — commence ta liste !
+                        Aucun livre ajoute !
                       </p>
                     </Card>
                   ) : (
@@ -5254,7 +7317,7 @@ export default function App() {
                                 />
                                 <Edit
                                   onClick={function () {
-                                    open("livre", Object.assign({}, l));
+                                    openModal("livre", Object.assign({}, l));
                                   }}
                                 />
                                 <Del
@@ -5272,7 +7335,7 @@ export default function App() {
                                   marginBottom: 4,
                                 }}
                               >
-                                {"⭐".repeat(parseInt(l.note) || 0)}
+                                Note: {l.note}/5
                               </div>
                             )}
                             {l.avis && (
@@ -5297,7 +7360,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── SANTÉ ── */}
               {tab === "sante" && (
                 <div>
                   <h2
@@ -5308,7 +7370,7 @@ export default function App() {
                       color: C.text,
                     }}
                   >
-                    Santé & Bien-être
+                    Sante et Bien-etre
                   </h2>
                   <Card style={{ marginBottom: 14 }}>
                     <SecTitle>Suivi du Sommeil</SecTitle>
@@ -5342,7 +7404,7 @@ export default function App() {
                             return nd;
                           });
                         }}
-                        style={Object.assign({}, inpStyle, {
+                        style={Object.assign({}, inp, {
                           width: 80,
                           textAlign: "center",
                         })}
@@ -5406,7 +7468,7 @@ export default function App() {
                       <SecTitle>Suivi du Sport</SecTitle>
                       <Btn
                         onClick={function () {
-                          open("sport", {
+                          openModal("sport", {
                             type: "",
                             duree: "",
                             distance: "",
@@ -5416,13 +7478,13 @@ export default function App() {
                         }}
                         style={{ padding: "5px 12px", fontSize: 11 }}
                       >
-                        + Séance
+                        + Seance
                       </Btn>
                     </div>
                     <div style={Object.assign({}, g2, { marginBottom: 12 })}>
                       {[
                         {
-                          l: "Séances ce mois",
+                          l: "Seances ce mois",
                           v: sportData.filter(function (s) {
                             return (
                               s.date &&
@@ -5433,7 +7495,7 @@ export default function App() {
                           }).length,
                           c: C.green,
                         },
-                        { l: "Total séances", v: sportData.length, c: C.blue },
+                        { l: "Total seances", v: sportData.length, c: C.blue },
                       ].map(function (k, i) {
                         return (
                           <div
@@ -5538,10 +7600,10 @@ export default function App() {
                       })}
                   </Card>
                   <Card>
-                    <SecTitle>Humeur — 30 derniers jours</SecTitle>
+                    <SecTitle>Humeur - 30 derniers jours</SecTitle>
                     {moodChartData.length === 0 ? (
                       <p style={{ color: C.textSec, fontSize: 13 }}>
-                        Commence à noter ton humeur depuis le tableau de bord
+                        Commence a noter ton humeur depuis le tableau de bord
                       </p>
                     ) : (
                       <ResponsiveContainer width="100%" height={120}>
@@ -5563,10 +7625,7 @@ export default function App() {
                           />
                           <Tooltip
                             formatter={function (v) {
-                              return [
-                                MOOD_LABELS[v - 1] + " " + v + "/5",
-                                "Humeur",
-                              ];
+                              return [v + "/5", "Humeur"];
                             }}
                             contentStyle={{
                               background: C.cardBg,
@@ -5592,7 +7651,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── COUNTDOWN ── */}
               {tab === "countdown" && (
                 <div>
                   <div
@@ -5611,11 +7669,15 @@ export default function App() {
                         color: C.text,
                       }}
                     >
-                      Compte à rebours
+                      Compte a rebours
                     </h2>
                     <Btn
                       onClick={function () {
-                        open("countdown", { nom: "", date: "", emoji: "🎯" });
+                        openModal("countdown", {
+                          nom: "",
+                          date: "",
+                          emoji: "*",
+                        });
                       }}
                     >
                       + Ajouter
@@ -5630,8 +7692,7 @@ export default function App() {
                           textAlign: "center",
                         }}
                       >
-                        Ajoute tes échéances importantes — événements,
-                        deadlines, voyages...
+                        Ajoute tes echeances importantes
                       </p>
                     </Card>
                   ) : (
@@ -5675,8 +7736,8 @@ export default function App() {
                                   gap: 12,
                                 }}
                               >
-                                <span style={{ fontSize: 28 }}>
-                                  {c.emoji || "🎯"}
+                                <span style={{ fontSize: 24 }}>
+                                  {c.emoji || "*"}
                                 </span>
                                 <div>
                                   <div
@@ -5717,7 +7778,7 @@ export default function App() {
                                     }}
                                   >
                                     {past
-                                      ? "Passé"
+                                      ? "Passe"
                                       : c.jours === 0
                                       ? "Auj."
                                       : c.jours + "j"}
@@ -5731,14 +7792,17 @@ export default function App() {
                                         : urgent
                                         ? "urgent"
                                         : soon
-                                        ? "bientôt"
+                                        ? "bientot"
                                         : "dans " + c.jours + " jours"}
                                     </div>
                                   )}
                                 </div>
                                 <Edit
                                   onClick={function () {
-                                    open("countdown", Object.assign({}, c));
+                                    openModal(
+                                      "countdown",
+                                      Object.assign({}, c)
+                                    );
                                   }}
                                 />
                                 <Del
@@ -5750,7 +7814,7 @@ export default function App() {
                             </div>
                             {!past && c.jours > 0 && c.jours <= 30 && (
                               <div style={{ marginTop: 12 }}>
-                                <PBar
+                                <APBar
                                   pct={100 - (c.jours / 30) * 100}
                                   color={
                                     urgent ? C.red : soon ? C.beige : C.green
@@ -5767,7 +7831,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── RÉTROSPECTIVE ── */}
               {tab === "retro" && (
                 <div>
                   <h2
@@ -5778,15 +7841,14 @@ export default function App() {
                       color: C.text,
                     }}
                   >
-                    Rétrospective Mensuelle
+                    Retrospective Mensuelle
                   </h2>
                   <p
                     style={{ color: C.textSec, fontSize: 13, marginBottom: 20 }}
                   >
-                    {MOIS[new Date().getMonth()]} {new Date().getFullYear()} —
+                    {MOIS[new Date().getMonth()]} {new Date().getFullYear()} -
                     Prends 10 minutes pour faire le bilan
                   </p>
-
                   <Card style={{ marginBottom: 14 }}>
                     <SecTitle>Note globale du mois</SecTitle>
                     <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
@@ -5820,37 +7882,32 @@ export default function App() {
                               transition: "all .2s",
                             }}
                           >
-                            ⭐
+                            *
                           </button>
                         );
                       })}
                     </div>
                   </Card>
-
                   {[
                     {
                       key: "victoires",
-                      label: "🏆 Mes victoires ce mois",
-                      placeholder:
-                        "Qu'est-ce que j'ai accompli ? Quels progrès ai-je faits ?",
+                      label: "Mes victoires ce mois",
+                      placeholder: "Qu'est-ce que j'ai accompli ?",
                     },
                     {
                       key: "ameliorations",
-                      label: "🔧 Ce que j'aurais pu mieux faire",
-                      placeholder:
-                        "Quels obstacles ai-je rencontrés ? Qu'est-ce que j'améliore ?",
+                      label: "Ce que j'aurais pu mieux faire",
+                      placeholder: "Quels obstacles ai-je rencontres ?",
                     },
                     {
                       key: "focus",
-                      label: "🎯 Mon focus pour le mois prochain",
-                      placeholder:
-                        "Sur quoi je vais me concentrer ? Quels sont mes 3 priorités ?",
+                      label: "Mon focus pour le mois prochain",
+                      placeholder: "Sur quoi je vais me concentrer ?",
                     },
                     {
                       key: "gratitude",
-                      label: "🙏 Ma gratitude du mois",
-                      placeholder:
-                        "Pour quoi suis-je reconnaissant ce mois-ci ?",
+                      label: "Ma gratitude du mois",
+                      placeholder: "Pour quoi suis-je reconnaissant ?",
                     },
                   ].map(function (s) {
                     return (
@@ -5888,8 +7945,6 @@ export default function App() {
                       </Card>
                     );
                   })}
-
-                  {/* Stats du mois */}
                   <Card>
                     <SecTitle>Stats du mois</SecTitle>
                     <div
@@ -5902,27 +7957,19 @@ export default function App() {
                       }}
                     >
                       {[
-                        { l: "Tâches terminées", v: terminees, c: C.green },
+                        { l: "Taches terminees", v: terminees, c: C.green },
                         {
                           l: "Habitudes (taux)",
                           v: tauxHabit + "%",
                           c: tauxHabit >= 50 ? C.green : C.red,
                         },
                         {
-                          l: "Livres lus",
-                          v: livres.filter(function (l) {
-                            return (
-                              l.statut === "Terminé" &&
-                              l.date &&
-                              l.date.startsWith(
-                                new Date().toISOString().substring(0, 7)
-                              )
-                            );
-                          }).length,
-                          c: C.blue,
+                          l: "Bien-être moyen",
+                          v: wellbeingScore + "/100",
+                          c: wbColor(wellbeingScore),
                         },
                         {
-                          l: "Séances sport",
+                          l: "Seances sport",
                           v: sportData.filter(function (s) {
                             return (
                               s.date &&
@@ -5972,14 +8019,26 @@ export default function App() {
             </div>
           </PageTransition>
         </div>
+
+        <CoachIA
+          taches={taches}
+          habitudes={habitudes}
+          habitData={habitData}
+          moodData={moodData}
+          sommeilData={sommeilData}
+          objectifs={objectifs}
+          budget={budget}
+          sportData={sportData}
+        />
+
         {modal === "tache" && (
           <Modal
-            title={form.id ? "Modifier la tâche" : "Nouvelle tâche"}
+            title={form.id ? "Modifier la tache" : "Nouvelle tache"}
             onClose={close}
           >
             <Row>
               <MI
-                placeholder="Nom de la tâche"
+                placeholder="Nom de la tache"
                 value={form.nom || ""}
                 onChange={function (e) {
                   f("nom", e.target.value);
@@ -5998,7 +8057,7 @@ export default function App() {
                 })}
               </MS>
               <MS
-                value={form.statut || "Pas commencé"}
+                value={form.statut || "Pas commence"}
                 onChange={function (e) {
                   f("statut", e.target.value);
                 }}
@@ -6021,14 +8080,14 @@ export default function App() {
               </MS>
               <input
                 type="date"
-                style={Object.assign({}, inpStyle, { flex: 1 })}
+                style={Object.assign({}, inp, { flex: 1 })}
                 value={form.echeance || ""}
                 onChange={function (e) {
                   f("echeance", e.target.value);
                 }}
               />
             </Row>
-            <ModalFooter onClose={close} onSave={saveTache} />
+            <MF onClose={close} onSave={saveTache} />
           </Modal>
         )}
         {modal === "habitude" && (
@@ -6057,7 +8116,7 @@ export default function App() {
                 }}
               />
             </Row>
-            <ModalFooter onClose={close} onSave={saveHabitude} />
+            <MF onClose={close} onSave={saveHabitude} />
           </Modal>
         )}
         {modal === "projet" && (
@@ -6086,7 +8145,7 @@ export default function App() {
             <Row>
               <input
                 type="date"
-                style={Object.assign({}, inpStyle, { flex: 1 })}
+                style={Object.assign({}, inp, { flex: 1 })}
                 value={form.debut || ""}
                 onChange={function (e) {
                   f("debut", e.target.value);
@@ -6094,7 +8153,7 @@ export default function App() {
               />
               <input
                 type="date"
-                style={Object.assign({}, inpStyle, { flex: 1 })}
+                style={Object.assign({}, inp, { flex: 1 })}
                 value={form.fin || ""}
                 onChange={function (e) {
                   f("fin", e.target.value);
@@ -6103,7 +8162,7 @@ export default function App() {
             </Row>
             <Row>
               <MS
-                value={form.statut || "Planifié"}
+                value={form.statut || "Planifie"}
                 onChange={function (e) {
                   f("statut", e.target.value);
                 }}
@@ -6123,7 +8182,7 @@ export default function App() {
                 }}
               />
             </Row>
-            <ModalFooter onClose={close} onSave={saveProjet} />
+            <MF onClose={close} onSave={saveProjet} />
           </Modal>
         )}
         {modal === "domaine" && (
@@ -6196,7 +8255,7 @@ export default function App() {
                 })}
               </div>
             </Row>
-            <ModalFooter onClose={close} onSave={saveDomaine} />
+            <MF onClose={close} onSave={saveDomaine} />
           </Modal>
         )}
         {modal === "objectif" && (
@@ -6250,7 +8309,7 @@ export default function App() {
                 <option value="long">Long terme</option>
               </MS>
             </Row>
-            <ModalFooter onClose={close} onSave={saveObjectif} />
+            <MF onClose={close} onSave={saveObjectif} />
           </Modal>
         )}
         {modal === "livre" && (
@@ -6283,7 +8342,7 @@ export default function App() {
                   f("statut", e.target.value);
                 }}
               >
-                {["À lire", "En cours", "Terminé"].map(function (s) {
+                {["A lire", "En cours", "Termine"].map(function (s) {
                   return <option key={s}>{s}</option>;
                 })}
               </MS>
@@ -6297,7 +8356,7 @@ export default function App() {
                 {[1, 2, 3, 4, 5].map(function (n) {
                   return (
                     <option key={n} value={n}>
-                      {"⭐".repeat(n)}
+                      {n + "/5"}
                     </option>
                   );
                 })}
@@ -6324,14 +8383,14 @@ export default function App() {
                 }}
               />
             </Row>
-            <ModalFooter onClose={close} onSave={saveLivre} />
+            <MF onClose={close} onSave={saveLivre} />
           </Modal>
         )}
         {modal === "sport" && (
-          <Modal title="Nouvelle séance" onClose={close}>
+          <Modal title="Nouvelle seance" onClose={close}>
             <Row>
               <MI
-                placeholder="Type (course, muscu, vélo...)"
+                placeholder="Type (course, muscu, velo...)"
                 value={form.type || ""}
                 onChange={function (e) {
                   f("type", e.target.value);
@@ -6341,7 +8400,7 @@ export default function App() {
             <Row>
               <MI
                 type="number"
-                placeholder="Durée (min)"
+                placeholder="Duree (min)"
                 value={form.duree || ""}
                 onChange={function (e) {
                   f("duree", e.target.value);
@@ -6359,24 +8418,24 @@ export default function App() {
             <Row>
               <input
                 type="date"
-                style={Object.assign({}, inpStyle, { flex: 1 })}
+                style={Object.assign({}, inp, { flex: 1 })}
                 value={form.date || todayKey}
                 onChange={function (e) {
                   f("date", e.target.value);
                 }}
               />
             </Row>
-            <ModalFooter onClose={close} onSave={saveSport} />
+            <MF onClose={close} onSave={saveSport} />
           </Modal>
         )}
         {modal === "countdown" && (
           <Modal
-            title={form.id ? "Modifier" : "Nouveau compte à rebours"}
+            title={form.id ? "Modifier" : "Nouveau compte a rebours"}
             onClose={close}
           >
             <Row>
               <MI
-                placeholder="Nom (ex: Voyage à Paris)"
+                placeholder="Nom (ex: Voyage a Paris)"
                 value={form.nom || ""}
                 onChange={function (e) {
                   f("nom", e.target.value);
@@ -6385,8 +8444,8 @@ export default function App() {
             </Row>
             <Row>
               <MI
-                placeholder="Emoji"
-                value={form.emoji || "🎯"}
+                placeholder="Emoji ou symbole"
+                value={form.emoji || "*"}
                 onChange={function (e) {
                   f("emoji", e.target.value);
                 }}
@@ -6394,14 +8453,14 @@ export default function App() {
               />
               <input
                 type="date"
-                style={Object.assign({}, inpStyle, { flex: 1 })}
+                style={Object.assign({}, inp, { flex: 1 })}
                 value={form.date || ""}
                 onChange={function (e) {
                   f("date", e.target.value);
                 }}
               />
             </Row>
-            <ModalFooter onClose={close} onSave={saveCountdown} />
+            <MF onClose={close} onSave={saveCountdown} />
           </Modal>
         )}
         {modal === "vision_card" && (
@@ -6411,7 +8470,7 @@ export default function App() {
           >
             <Row>
               <MI
-                placeholder="Titre (ex: Liberté financière)"
+                placeholder="Titre (ex: Liberte financiere)"
                 value={form.titre || ""}
                 onChange={function (e) {
                   f("titre", e.target.value);
@@ -6470,7 +8529,7 @@ export default function App() {
                 })}
               </div>
             </Row>
-            <ModalFooter onClose={close} onSave={saveVisionCard} />
+            <MF onClose={close} onSave={saveVisionCard} />
           </Modal>
         )}
         {["budget_revenus", "budget_fixes", "budget_variables"].map(function (
@@ -6484,7 +8543,7 @@ export default function App() {
             >
               <Row>
                 <MI
-                  placeholder="Catégorie"
+                  placeholder="Categorie"
                   value={form.cat || ""}
                   onChange={function (e) {
                     f("cat", e.target.value);
@@ -6495,14 +8554,14 @@ export default function App() {
                 <MI
                   type="number"
                   min="0"
-                  placeholder="Montant prévu (€)"
+                  placeholder="Montant prevu"
                   value={form.prevu || 0}
                   onChange={function (e) {
                     f("prevu", e.target.value);
                   }}
                 />
               </Row>
-              <ModalFooter
+              <MF
                 onClose={close}
                 onSave={function () {
                   saveBudget(key.replace("budget_", ""));
