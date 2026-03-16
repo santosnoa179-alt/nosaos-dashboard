@@ -6021,6 +6021,12 @@ export default function App() {
                       var hasAll =
                         habitudes.length > 0 && doneCount === habitudes.length;
                       var hasSome = doneCount > 0 && !hasAll;
+                      // Parse la date sans décalage timezone
+                      var parts = k.split("-");
+                      var dy = parseInt(parts[0]);
+                      var dm = parseInt(parts[1]) - 1;
+                      var dd2 = parseInt(parts[2]);
+                      var dLocal = new Date(dy, dm, dd2);
                       return (
                         <button
                           key={k}
@@ -6058,7 +6064,7 @@ export default function App() {
                           >
                             {
                               ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"][
-                                (d.getDay() + 6) % 7
+                                (dLocal.getDay() + 6) % 7
                               ]
                             }
                           </span>
@@ -6069,7 +6075,7 @@ export default function App() {
                               color: isSelected ? "#fff" : C.text,
                             }}
                           >
-                            {d.getDate()}
+                            {dLocal.getDate()}
                           </span>
                           <div
                             style={{
@@ -6130,10 +6136,18 @@ export default function App() {
                               day: "numeric",
                               month: "long",
                             })
-                          : new Date(selectedHabitDay).toLocaleDateString(
-                              "fr-FR",
-                              { weekday: "long", day: "numeric", month: "long" }
-                            )}
+                          : (function () {
+                              var p = selectedHabitDay.split("-");
+                              return new Date(
+                                parseInt(p[0]),
+                                parseInt(p[1]) - 1,
+                                parseInt(p[2])
+                              ).toLocaleDateString("fr-FR", {
+                                weekday: "long",
+                                day: "numeric",
+                                month: "long",
+                              });
+                            })()}
                       </SecTitle>
                       <span
                         style={{
