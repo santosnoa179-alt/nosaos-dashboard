@@ -5529,7 +5529,8 @@ export default function App() {
                           }}
                         >
                           {habitudes.map(function (h) {
-                            var checked = todayData[h.id] || false;
+                            var checked =
+                              (habitData[todayKey] || {})[h.id] || false;
                             var streak = getStreak(h.id);
                             return (
                               <div
