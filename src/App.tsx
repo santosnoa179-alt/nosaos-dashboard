@@ -583,6 +583,21 @@ var fmt = function (v) {
     (+v || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2 }) + " EUR"
   );
 };
+// Génère toujours une clé date en heure locale (jamais UTC)
+function localDateKey(d) {
+  var dt = d || new Date();
+  return (
+    dt.getFullYear() +
+    "-" +
+    String(dt.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(dt.getDate()).padStart(2, "0")
+  );
+}
+function localDateFromKey(k) {
+  var p = k.split("-");
+  return new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
+}
 
 // ── Wellbeing ─────────────────────────────────────────────
 function calcWellbeing(
@@ -1297,7 +1312,12 @@ function CoachIA({
     [messages]
   );
   var today = new Date();
-  var todayKey = today.toISOString().split("T")[0];
+  var todayKey =
+    today.getFullYear() +
+    "-" +
+    String(today.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(today.getDate()).padStart(2, "0");
   var mois = MOIS[today.getMonth()];
   var moisData = habitData[mois] || {};
   var todayData = habitData[todayKey] || {};
@@ -2593,7 +2613,7 @@ function NotesTab({ notes, setNotes }) {
 function RoutineTab({ routines, setRoutines, routineLog, setRoutineLog }) {
   var C = useContext(ThemeCtx);
   var today = new Date();
-  var todayKey = today.toISOString().split("T")[0];
+  var todayKey = localDateKey(today);
   var todayLog = routineLog[todayKey] || { matin: {}, soir: {} };
   var [active, setActive] = useState("matin");
   var [modal, setModal] = useState(null);
@@ -3915,9 +3935,9 @@ export default function App() {
   var [routineLog, setRoutineLog] = useSynced("routinelog_v1", {});
   var [notes, setNotes] = useSynced("notes_v1", []);
   var [versetOffset, setVersetOffset] = useState(0);
-  var [selectedHabitDay, setSelectedHabitDay] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  var [selectedHabitDay, setSelectedHabitDay] = useState(function () {
+    return localDateKey(new Date());
+  });
   var [modal, setModal] = useState(null);
   var [form, setForm] = useState({});
   var [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -6009,9 +6029,12 @@ export default function App() {
                     }}
                   >
                     {Array.from({ length: 7 }, function (_, i) {
-                      var d = new Date(today);
-                      d.setDate(d.getDate() - (6 - i));
-                      var k = d.toISOString().split("T")[0];
+                      var d = new Date(
+                        today.getFullYear(),
+                        today.getMonth(),
+                        today.getDate() - (6 - i)
+                      );
+                      var k = localDateKey(d);
                       var isSelected = selectedHabitDay === k;
                       var isToday = k === todayKey;
                       var dayData = habitData[k] || {};
@@ -6136,18 +6159,13 @@ export default function App() {
                               day: "numeric",
                               month: "long",
                             })
-                          : (function () {
-                              var p = selectedHabitDay.split("-");
-                              return new Date(
-                                parseInt(p[0]),
-                                parseInt(p[1]) - 1,
-                                parseInt(p[2])
-                              ).toLocaleDateString("fr-FR", {
-                                weekday: "long",
-                                day: "numeric",
-                                month: "long",
-                              });
-                            })()}
+                          : localDateFromKey(
+                              selectedHabitDay
+                            ).toLocaleDateString("fr-FR", {
+                              weekday: "long",
+                              day: "numeric",
+                              month: "long",
+                            })}
                       </SecTitle>
                       <span
                         style={{
