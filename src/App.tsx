@@ -1485,17 +1485,37 @@ function CoachIA({
           }),
         }),
       });
+      if (!res.ok) {
+        var errData = await res.json().catch(function () {
+          return {};
+        });
+        throw new Error(
+          errData.error && errData.error.message
+            ? errData.error.message
+            : "HTTP " + res.status
+        );
+      }
       var data = await res.json();
       var reply =
-        data.content && data.content[0]
+        data.content && data.content[0] && data.content[0].text
           ? data.content[0].text
           : "Désolé, je n'ai pas pu répondre.";
       setMessages(function (p) {
         return [...p, { role: "assistant", content: reply }];
       });
     } catch (e) {
+      var msg = e && e.message ? e.message : "Erreur inconnue";
       setMessages(function (p) {
-        return [...p, { role: "assistant", content: "Erreur de connexion." }];
+        return [
+          ...p,
+          {
+            role: "assistant",
+            content:
+              "Erreur : " +
+              msg +
+              "\n\nAssure-toi que l'artifact est ouvert depuis claude.ai (l'API est gérée automatiquement par l'environnement).",
+          },
+        ];
       });
     }
     setLoading(false);
