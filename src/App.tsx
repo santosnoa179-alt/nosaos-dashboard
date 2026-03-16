@@ -1466,58 +1466,320 @@ function CoachIA({
       " ce mois"
     );
   }
+  function analyseLocale(userMsg) {
+    var msg = userMsg.toLowerCase();
+    var today = new Date();
+    var todayKey = today.toISOString().split("T")[0];
+    var moisCur = MOIS[today.getMonth()];
+    var moisD = habitData[moisCur] || {};
+    var todayD = habitData[todayKey] || {};
+    var totalObj2 = habitudes.reduce(function (s, h) {
+      return s + h.obj;
+    }, 0);
+    var totalReal2 = habitudes.reduce(function (s, h) {
+      return s + (moisD[h.id] || 0);
+    }, 0);
+    var taux = totalObj2 > 0 ? Math.round((totalReal2 / totalObj2) * 100) : 0;
+    var terminees2 = taches.filter(function (t) {
+      return t.statut === "Termine";
+    }).length;
+    var urgentes2 = taches.filter(function (t) {
+      return t.priorite === "Urgent" && t.statut !== "Termine";
+    }).length;
+    var retard = taches.filter(function (t) {
+      return (
+        t.statut !== "Termine" && t.echeance && new Date(t.echeance) < today
+      );
+    }).length;
+    var wb = calcWellbeing(
+      todayKey,
+      habitData,
+      habitudes,
+      moodData,
+      sommeilData,
+      sportData
+    );
+    var habitDoneToday = habitudes.filter(function (h) {
+      return todayD[h.id];
+    }).length;
+    var revReel2 = budget.revenus.reduce(function (s, r) {
+      return s + (+r.reel || 0);
+    }, 0);
+    var depReel2 =
+      budget.fixes.reduce(function (s, r) {
+        return s + (+r.reel || 0);
+      }, 0) +
+      budget.variables.reduce(function (s, r) {
+        return s + (+r.reel || 0);
+      }, 0);
+    var solde2 = revReel2 - depReel2;
+    function getStreak2(hid) {
+      var streak = 0;
+      var d = new Date(today);
+      while (true) {
+        var k = d.toISOString().split("T")[0];
+        var dd = habitData[k];
+        if (dd && dd[hid]) {
+          streak++;
+          d.setDate(d.getDate() - 1);
+        } else break;
+      }
+      return streak;
+    }
+    var bestStreak2 = habitudes.reduce(function (b, h) {
+      return Math.max(b, getStreak2(h.id));
+    }, 0);
+    var bestHabit = habitudes.reduce(
+      function (b, h) {
+        var s = getStreak2(h.id);
+        return s > b.s ? { nom: h.nom, s: s } : b;
+      },
+      { nom: "", s: 0 }
+    );
+
+    // Analyse habitudes
+    if (
+      msg.includes("habit") ||
+      msg.includes("streak") ||
+      msg.includes("progres") ||
+      msg.includes("progrès")
+    ) {
+      var top = habitudes.filter(function (h) {
+        return getStreak2(h.id) >= 3;
+      });
+      var faibles = habitudes.filter(function (h) {
+        var v = moisD[h.id] || 0;
+        return Math.round((v / h.obj) * 100) < 40;
+      });
+      var r = "Bonjour Noa ! Voici l'analyse de tes habitudes ce mois :\n\n";
+      r +=
+        "📊 Taux global : " +
+        taux +
+        "% (" +
+        totalReal2 +
+        "/" +
+        totalObj2 +
+        " réalisées)\n";
+      r +=
+        "✅ Faites aujourd'hui : " +
+        habitDoneToday +
+        "/" +
+        habitudes.length +
+        "\n";
+      r +=
+        "🔥 Meilleur streak : " +
+        bestStreak2 +
+        "j" +
+        (bestHabit.nom ? " (" + bestHabit.nom + ")" : "") +
+        "\n\n";
+      if (top.length > 0) {
+        r += "Points forts :\n";
+        top.forEach(function (h) {
+          r += "• " + h.nom + " — " + getStreak2(h.id) + "j de streak\n";
+        });
+      }
+      if (faibles.length > 0) {
+        r += "\nAxes d'amélioration :\n";
+        faibles.forEach(function (h) {
+          var v = moisD[h.id] || 0;
+          r +=
+            "• " +
+            h.nom +
+            " — seulement " +
+            Math.round((v / h.obj) * 100) +
+            "%\n";
+        });
+      }
+      if (taux >= 70)
+        r += "\nExcellent travail Noa ! Tu es en bonne voie ce mois-ci.";
+      else if (taux >= 40) r += "\nBon début Noa, continue sur cette lancée !";
+      else
+        r +=
+          "\nNoa, ce mois peut encore être rattrapé — concentre-toi sur 2-3 habitudes clés d'abord.";
+      return r;
+    }
+    // Motivation
+    if (
+      msg.includes("motiv") ||
+      msg.includes("courage") ||
+      msg.includes("encour")
+    ) {
+      var r2 = "Noa, voici ton bilan motivationnel :\n\n";
+      r2 +=
+        "Tu as terminé " +
+        terminees2 +
+        " tâches sur " +
+        taches.length +
+        " ce mois.\n";
+      r2 += "Ton score bien-être est de " + wb + "/100 — ";
+      if (wb >= 70) r2 += "excellent, tu prends soin de toi !\n";
+      else if (wb >= 40)
+        r2 += "correct, quelques ajustements peuvent tout changer.\n";
+      else
+        r2 +=
+          "il y a de la marge, commençons par le sommeil et les habitudes.\n";
+      if (bestStreak2 >= 7)
+        r2 +=
+          "\n🔥 " +
+          bestStreak2 +
+          " jours de streak consécutifs — c'est de la discipline pure Noa !";
+      else if (bestStreak2 >= 3)
+        r2 +=
+          "\n💪 " +
+          bestStreak2 +
+          " jours de suite — la régularité se construit !";
+      r2 +=
+        "\n\nRappelle-toi : chaque jour compte. Ce que tu fais aujourd'hui définit qui tu seras demain.";
+      return r2;
+    }
+    // Tâches / priorités
+    if (
+      msg.includes("tâche") ||
+      msg.includes("tache") ||
+      msg.includes("priorit") ||
+      msg.includes("plan") ||
+      msg.includes("focus")
+    ) {
+      var r3 = "Noa, voici tes priorités maintenant :\n\n";
+      if (urgentes2 > 0)
+        r3 +=
+          "🔴 " + urgentes2 + " tâche(s) URGENTE(S) à traiter en premier !\n";
+      if (retard > 0)
+        r3 += "⚠️ " + retard + " tâche(s) en retard à rattraper.\n";
+      var enCours = taches.filter(function (t) {
+        return t.statut === "En cours";
+      });
+      if (enCours.length > 0) {
+        r3 += "\nEn cours :\n";
+        enCours.slice(0, 3).forEach(function (t) {
+          r3 +=
+            "• " +
+            t.nom +
+            (t.echeance ? " (échéance : " + t.echeance + ")" : "") +
+            "\n";
+        });
+      }
+      var prochaines = taches.filter(function (t) {
+        return t.statut === "Pas commence" && t.priorite === "Urgent";
+      });
+      if (prochaines.length > 0) {
+        r3 += "\nÀ démarrer :\n";
+        prochaines.slice(0, 3).forEach(function (t) {
+          r3 += "• " + t.nom + "\n";
+        });
+      }
+      r3 +=
+        "\nConcentre-toi sur une tâche à la fois, Noa. La progression bat la perfection.";
+      return r3;
+    }
+    // Bien-être
+    if (
+      msg.includes("bien") ||
+      msg.includes("santé") ||
+      msg.includes("sante") ||
+      msg.includes("score") ||
+      msg.includes("forme")
+    ) {
+      var r4 = "Noa, voici ton score bien-être du jour :\n\n";
+      r4 += "💚 Score global : " + wb + "/100 — " + wbLabel(wb) + "\n\n";
+      var mood = moodData[todayKey] || 0;
+      var sommeil = parseFloat(sommeilData[todayKey]) || 0;
+      var ws3 = new Date(today);
+      var dw3 = ws3.getDay();
+      ws3.setDate(ws3.getDate() + (dw3 === 0 ? -6 : 1 - dw3));
+      var sportW = sportData.filter(function (s) {
+        return s.date && new Date(s.date) >= ws3;
+      }).length;
+      r4 +=
+        "• Habitudes : " +
+        habitDoneToday +
+        "/" +
+        habitudes.length +
+        " aujourd'hui\n";
+      r4 += "• Humeur : " + (mood ? mood + "/5" : "non renseignée") + "\n";
+      r4 += "• Sommeil : " + (sommeil ? sommeil + "h" : "non renseigné") + "\n";
+      r4 += "• Sport : " + sportW + " séance(s) cette semaine\n\n";
+      if (sommeil > 0 && sommeil < 6)
+        r4 +=
+          "Ton sommeil est insuffisant — vise 7-8h pour booster ton énergie.\n";
+      if (sportW === 0)
+        r4 +=
+          "Pas de sport cette semaine encore — même 20min de marche compte !\n";
+      if (mood > 0 && mood <= 2)
+        r4 += "L'humeur est basse — prends soin de toi ce soir, Noa.\n";
+      if (wb >= 70) r4 += "\nTu es en grande forme ! Continue comme ça.";
+      return r4;
+    }
+    // Budget
+    if (
+      msg.includes("budget") ||
+      msg.includes("argent") ||
+      msg.includes("dépense") ||
+      msg.includes("solde")
+    ) {
+      var r5 = "Noa, voici ton état financier du mois :\n\n";
+      r5 += "💰 Revenus : " + fmt(revReel2) + "\n";
+      r5 += "💸 Dépenses : " + fmt(depReel2) + "\n";
+      r5 +=
+        "📊 Solde : " + fmt(solde2) + (solde2 >= 0 ? " ✅" : " ⚠️") + "\n\n";
+      if (solde2 < 0)
+        r5 +=
+          "Attention Noa, tes dépenses dépassent tes revenus ce mois. Regarde l'onglet Budget pour ajuster.";
+      else if (solde2 > 0)
+        r5 +=
+          "Bonne gestion ! Tu as un solde positif de " +
+          fmt(solde2) +
+          " ce mois.";
+      return r5;
+    }
+    // Bilan semaine
+    if (
+      msg.includes("bilan") ||
+      msg.includes("semaine") ||
+      msg.includes("résumé") ||
+      msg.includes("resume")
+    ) {
+      var r6 = "Bilan de la semaine pour Noa :\n\n";
+      r6 += "✅ Tâches terminées : " + terminees2 + "/" + taches.length + "\n";
+      r6 += "🔄 Habitudes : " + taux + "% ce mois\n";
+      r6 += "💚 Bien-être : " + wb + "/100\n";
+      r6 += "🔥 Meilleur streak : " + bestStreak2 + " jours\n";
+      r6 += "💰 Solde : " + fmt(solde2) + "\n\n";
+      if (wb >= 70 && taux >= 60)
+        r6 += "Excellente semaine Noa ! Tu es sur la bonne trajectoire.";
+      else if (taux >= 40)
+        r6 +=
+          "Semaine correcte. Quelques habitudes à renforcer la semaine prochaine.";
+      else
+        r6 +=
+          "Semaine difficile — c'est normal. Reprends les bases : sommeil, hydratation, une habitude à la fois.";
+      return r6;
+    }
+    // Défaut
+    var r7 = "Bonjour Noa ! Je suis ton Coach. Voici un aperçu rapide :\n\n";
+    r7 += "• Habitudes : " + taux + "% ce mois\n";
+    r7 += "• Tâches : " + terminees2 + "/" + taches.length + " terminées\n";
+    r7 += "• Bien-être : " + wb + "/100\n";
+    r7 += "• Streak max : " + bestStreak2 + "j\n\n";
+    r7 +=
+      "Pose-moi une question sur tes habitudes, ta motivation, tes priorités, ton bien-être ou ton budget !";
+    return r7;
+  }
+
   async function sendMessage(userMsg) {
     if (!userMsg.trim() || loading) return;
     var nm = [...messages, { role: "user", content: userMsg }];
     setMessages(nm);
     setInput("");
     setLoading(true);
-    try {
-      var res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: buildCtx(),
-          messages: nm.map(function (m) {
-            return { role: m.role, content: m.content };
-          }),
-        }),
-      });
-      if (!res.ok) {
-        var errData = await res.json().catch(function () {
-          return {};
-        });
-        throw new Error(
-          errData.error && errData.error.message
-            ? errData.error.message
-            : "HTTP " + res.status
-        );
-      }
-      var data = await res.json();
-      var reply =
-        data.content && data.content[0] && data.content[0].text
-          ? data.content[0].text
-          : "Désolé, je n'ai pas pu répondre.";
-      setMessages(function (p) {
-        return [...p, { role: "assistant", content: reply }];
-      });
-    } catch (e) {
-      var msg = e && e.message ? e.message : "Erreur inconnue";
-      setMessages(function (p) {
-        return [
-          ...p,
-          {
-            role: "assistant",
-            content:
-              "Erreur : " +
-              msg +
-              "\n\nAssure-toi que l'artifact est ouvert depuis claude.ai (l'API est gérée automatiquement par l'environnement).",
-          },
-        ];
-      });
-    }
+    // Simulation d'un délai naturel
+    await new Promise(function (r) {
+      setTimeout(r, 600);
+    });
+    var reply = analyseLocale(userMsg);
+    setMessages(function (p) {
+      return [...p, { role: "assistant", content: reply }];
+    });
     setLoading(false);
   }
   var QUICK = [
