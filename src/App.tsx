@@ -3915,6 +3915,9 @@ export default function App() {
   var [routineLog, setRoutineLog] = useSynced("routinelog_v1", {});
   var [notes, setNotes] = useSynced("notes_v1", []);
   var [versetOffset, setVersetOffset] = useState(0);
+  var [selectedHabitDay, setSelectedHabitDay] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   var [modal, setModal] = useState(null);
   var [form, setForm] = useState({});
   var [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -5994,6 +5997,123 @@ export default function App() {
                       + Ajouter
                     </Btn>
                   </div>
+
+                  {/* Sélecteur de jours — 7 derniers jours */}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 6,
+                      marginBottom: 14,
+                      overflowX: "auto",
+                      paddingBottom: 4,
+                    }}
+                  >
+                    {Array.from({ length: 7 }, function (_, i) {
+                      var d = new Date(today);
+                      d.setDate(d.getDate() - (6 - i));
+                      var k = d.toISOString().split("T")[0];
+                      var isSelected = selectedHabitDay === k;
+                      var isToday = k === todayKey;
+                      var dayData = habitData[k] || {};
+                      var doneCount = habitudes.filter(function (h) {
+                        return dayData[h.id];
+                      }).length;
+                      var hasAll =
+                        habitudes.length > 0 && doneCount === habitudes.length;
+                      var hasSome = doneCount > 0 && !hasAll;
+                      return (
+                        <button
+                          key={k}
+                          onClick={function () {
+                            setSelectedHabitDay(k);
+                          }}
+                          style={{
+                            flexShrink: 0,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 3,
+                            padding: "8px 10px",
+                            borderRadius: 10,
+                            border:
+                              "2px solid " +
+                              (isSelected
+                                ? C.beige
+                                : C === DARK
+                                ? "#333"
+                                : "#E2DDD7"),
+                            background: isSelected ? C.beige : C.cardBg,
+                            cursor: "pointer",
+                            minWidth: 48,
+                            transition: "all .2s",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: isSelected ? "#fff" : C.textSec,
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {
+                              ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"][
+                                (d.getDay() + 6) % 7
+                              ]
+                            }
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 14,
+                              fontWeight: 700,
+                              color: isSelected ? "#fff" : C.text,
+                            }}
+                          >
+                            {d.getDate()}
+                          </span>
+                          <div
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              background: hasAll
+                                ? isSelected
+                                  ? "#fff"
+                                  : C.green
+                                : hasSome
+                                ? isSelected
+                                  ? "#fff"
+                                  : C.beige
+                                : "transparent",
+                              border:
+                                "1.5px solid " +
+                                (isSelected
+                                  ? "rgba(255,255,255,.5)"
+                                  : hasAll
+                                  ? C.green
+                                  : hasSome
+                                  ? C.beige
+                                  : "transparent"),
+                            }}
+                          />
+                          {isToday && (
+                            <span
+                              style={{
+                                fontSize: 8,
+                                color: isSelected
+                                  ? "rgba(255,255,255,.8)"
+                                  : C.beige,
+                                fontWeight: 700,
+                              }}
+                            >
+                              auj.
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <Card style={{ marginBottom: 14 }}>
                     <div
                       style={{
@@ -6004,11 +6124,16 @@ export default function App() {
                       }}
                     >
                       <SecTitle>
-                        Aujourd'hui -{" "}
-                        {today.toLocaleDateString("fr-FR", {
-                          day: "numeric",
-                          month: "long",
-                        })}
+                        {selectedHabitDay === todayKey
+                          ? "Aujourd'hui — " +
+                            today.toLocaleDateString("fr-FR", {
+                              day: "numeric",
+                              month: "long",
+                            })
+                          : new Date(selectedHabitDay).toLocaleDateString(
+                              "fr-FR",
+                              { weekday: "long", day: "numeric", month: "long" }
+                            )}
                       </SecTitle>
                       <span
                         style={{
@@ -6017,8 +6142,12 @@ export default function App() {
                           fontWeight: 600,
                         }}
                       >
-                        {Object.values(todayData).filter(Boolean).length}/
-                        {habitudes.length}
+                        {
+                          habitudes.filter(function (h) {
+                            return (habitData[selectedHabitDay] || {})[h.id];
+                          }).length
+                        }
+                        /{habitudes.length}
                       </span>
                     </div>
                     <div
@@ -6029,13 +6158,14 @@ export default function App() {
                       }}
                     >
                       {habitudes.map(function (h) {
-                        var checked = todayData[h.id] || false;
+                        var checked =
+                          (habitData[selectedHabitDay] || {})[h.id] || false;
                         var streak = getStreak(h.id);
                         return (
                           <div
                             key={h.id}
                             onClick={function () {
-                              toggleHabit(h.id, todayKey);
+                              toggleHabit(h.id, selectedHabitDay);
                             }}
                             style={{
                               display: "flex",
@@ -6088,7 +6218,7 @@ export default function App() {
                             >
                               {h.nom}
                             </span>
-                            {streak > 0 && (
+                            {selectedHabitDay === todayKey && streak > 0 && (
                               <span
                                 style={{
                                   fontSize: 11,
